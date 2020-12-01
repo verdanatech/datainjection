@@ -29,66 +29,57 @@
  ---------------------------------------------------------------------- */
 
 if (!defined('GLPI_ROOT')) {
-   die("Sorry. You can't access directly to this file");
+    die("Sorry. You can't access directly to this file");
 }
 
 class PluginDatainjectionEntityInjection extends Entity
-implements PluginDatainjectionInjectionInterface
+                                         implements PluginDatainjectionInjectionInterface
 {
 
 
-   static function getTable($classname = null)
-   {
+   static function getTable($classname = null) {
 
       $parenttype = get_parent_class();
       return $parenttype::getTable();
    }
 
 
-   function isPrimaryType()
-   {
+   function isPrimaryType() {
 
       return true;
    }
 
 
-   function connectedTo()
-   {
+   function connectedTo() {
 
       return ['Document'];
    }
 
 
-   /**
+    /**
     * @see plugins/datainjection/inc/PluginDatainjectionInjectionInterface::getOptions()
-    **/
-   function getOptions($primary_type = '')
-   {
+   **/
+   function getOptions($primary_type = '') {
 
       $tab           = Search::getOptions(get_parent_class($this));
 
       //Remove some options because some fields cannot be imported
       $blacklist     = PluginDatainjectionCommonInjectionLib::getBlacklistedOptions(get_parent_class($this));
-      $notimportable = [
-         14, 26, 27, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41,
-         42, 43, 44, 45, 47, 48, 49, 50, 51, 52, 53, 54, 55, 91, 92, 93
-      ];
+      $notimportable = [14, 26, 27, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41,
+                           42, 43, 44, 45, 47, 48, 49,50, 51, 52, 53, 54, 55, 91, 92, 93];
 
       $options['ignore_fields'] = array_merge($blacklist, $notimportable);
-      $options['displaytype']   = [
-         "multiline_text" => [3, 16, 17, 24],
-         "dropdown"       => [9]
-      ];
+      $options['displaytype']   = ["multiline_text" => [3, 16, 17, 24],
+                                      "dropdown"       => [9]];
 
       return PluginDatainjectionCommonInjectionLib::addToSearchOptions($tab, $options, $this);
    }
 
 
-   /**
+    /**
     * @see plugins/datainjection/inc/PluginDatainjectionInjectionInterface::addOrUpdateObject()
-    **/
-   function addOrUpdateObject($values = [], $options = [])
-   {
+   **/
+   function addOrUpdateObject($values = [], $options = []) {
 
       $lib = new PluginDatainjectionCommonInjectionLib($this, $values, $options);
       $lib->processAddOrUpdate();
@@ -96,8 +87,7 @@ implements PluginDatainjectionInjectionInterface
    }
 
 
-   public static function getRootEntityName()
-   {
+   public static function getRootEntityName() {
       $root = new Entity();
       $root->getFromDb(0);
 
@@ -105,13 +95,12 @@ implements PluginDatainjectionInjectionInterface
    }
 
 
-   /**
+    /**
     * @param $input     array
     * @param $add                (true by default)
     * @param $rights    array
-    **/
-   function customimport($input = [], $add = true, $rights = [])
-   {
+   **/
+   function customimport($input = [], $add = true, $rights = []) {
 
       if (!isset($input['completename']) || empty($input['completename'])) {
          return -1;
@@ -138,8 +127,7 @@ implements PluginDatainjectionInjectionInterface
       }
    }
 
-   public function importEntity($input)
-   {
+   public function importEntity($input) {
       $em = new Entity();
 
       // Import a full tree from completename
@@ -175,13 +163,10 @@ implements PluginDatainjectionInjectionInterface
          $tmp['entities_id'] = $parent;
 
          // Does the entity alread exists ?
-         $results = getAllDatasFromTable(
+         $results = getAllDataFromTable(
             'glpi_entities',
             ['name' => $name, 'entities_id' => $parent]
          );
-
-
-         // Entity doesn't exists => create it
          if (empty($results)) {
             $parent = $em->import($tmp);
          } else {
@@ -190,12 +175,10 @@ implements PluginDatainjectionInjectionInterface
             $parent = $ent['id'];
          }
       }
-
       return $parent;
    }
 
-   public function updateExistingEntity($id, $input)
-   {
+   public function updateExistingEntity($id, $input) {
       $em = new Entity();
 
       // Update entity
@@ -208,18 +191,17 @@ implements PluginDatainjectionInjectionInterface
    }
 
 
-   /**
+    /**
     * @param $injectionClass
     * @param $values
     * @param $options
-    **/
-   function customDataAlreadyInDB($injectionClass, $values, $options)
-   {
+   **/
+   function customDataAlreadyInDB($injectionClass, $values, $options) {
 
       if (!isset($values['completename'])) {
          return false;
       }
-      $results = getAllDatasFromTable(
+      $results = getAllDataFromTable(
          'glpi_entities',
          ['completename' => $values['completename']]
       );
@@ -231,4 +213,5 @@ implements PluginDatainjectionInjectionInterface
       $ent = array_pop($results);
       return $ent['id'];
    }
+
 }

@@ -33,12 +33,11 @@ class PluginDatainjectionMapping extends CommonDBTM
 
    static $rightname = "plugin_datainjection_model";
 
-   /**
+    /**
     * @param $field
     * @param $value
-    **/
-   function equal($field, $value)
-   {
+   **/
+   function equal($field, $value) {
 
       if (!isset($this->fields[$field])) {
          return false;
@@ -52,53 +51,46 @@ class PluginDatainjectionMapping extends CommonDBTM
    }
 
 
-   function getMappingName()
-   {
+   function getMappingName() {
 
       return $this->fields["name"];
    }
 
 
-   function getRank()
-   {
+   function getRank() {
 
       return $this->fields["rank"];
    }
 
 
-   function isMandatory()
-   {
+   function isMandatory() {
 
       return $this->fields["is_mandatory"];
    }
 
 
-   function getValue()
-   {
+   function getValue() {
 
       return $this->fields["value"];
    }
 
 
-   function getID()
-   {
+   function getID() {
 
       return $this->fields["id"];
    }
 
 
-   function getItemtype()
-   {
+   function getItemtype() {
 
       return $this->fields["itemtype"];
    }
 
 
-   /**
+    /**
     * @param $model  PluginDatainjectionModel object
-    **/
-   static function showFormMappings(PluginDatainjectionModel $model)
-   {
+   **/
+   static function showFormMappings(PluginDatainjectionModel $model) {
 
       global $CFG_GLPI;
 
@@ -110,19 +102,19 @@ class PluginDatainjectionMapping extends CommonDBTM
          $lines = [];
       }
 
-      echo "<form method='post' name=form action='" . Toolbox::getItemTypeFormURL(__CLASS__) . "'>";
+      echo "<form method='post' name=form action='".Toolbox::getItemTypeFormURL(__CLASS__)."'>";
 
       //Display link to the preview popup
       if (isset($_SESSION['datainjection']['lines']) && !empty($lines)) {
          $nblines = $_SESSION['datainjection']['nblines'];
          echo "<table class='tab_cadre_fixe'>";
          echo "<tr class='tab_bg_1'><td class='center'>";
-         $url = $CFG_GLPI["root_doc"] . "/plugins/datainjection" .
-            "/front/popup.php?popup=preview&amp;models_id=" .
-            $model->getID();
-         echo "<a href=#  onClick=\"var w = window.open('$url' , 'glpipopup', " .
-            "'height=400, width=600, top=100, left=100, scrollbars=yes' );w.focus();\"/>";
-         echo __('See the file', 'datainjection') . "</a>";
+         $url = $CFG_GLPI["root_doc"].
+             "/plugins/datainjection/front/popup.php?popup=preview&amp;models_id=".
+             $model->getID();
+         echo "<a href=#  onClick=\"var w = window.open('$url' , 'glpipopup', ".
+             "'height=400, width=600, top=100, left=100, scrollbars=yes' );w.focus();\"/>";
+         echo __('See the file', 'datainjection')."</a>";
          echo "</td></tr>";
       }
 
@@ -140,7 +132,7 @@ class PluginDatainjectionMapping extends CommonDBTM
          $mapping->fields = Toolbox::stripslashes_deep($mapping->fields);
          $mappings_id     = $mapping->getID();
          echo "<tr class='tab_bg_1'>";
-         echo "<td class='center'>" . $mapping->fields['name'] . "</td>";
+         echo "<td class='center'>".$mapping->fields['name']."</td>";
          echo "<td class='center'>";
          $options = ['primary_type' => $model->fields['itemtype']];
          PluginDatainjectionInjectionType::dropdownLinkedTypes($mapping, $options);
@@ -152,8 +144,8 @@ class PluginDatainjectionMapping extends CommonDBTM
 
       if ($canedit) {
          echo "<tr> <td class='tab_bg_2 center' colspan='4'>";
-         echo "<input type='hidden' name='models_id' value='" . $model->fields['id'] . "'>";
-         echo "<input type='submit' name='update' value='" . _sx('button', 'Save') . "' class='submit'>";
+         echo "<input type='hidden' name='models_id' value='".$model->fields['id']."'>";
+         echo "<input type='submit' name='update' value='"._sx('button', 'Save')."' class='submit'>";
          echo "</td></tr>";
       }
       echo "</table>";
@@ -161,15 +153,14 @@ class PluginDatainjectionMapping extends CommonDBTM
    }
 
 
-   /**
+    /**
     * For multitext only ! Check it there's more than one value to inject in a field
     *
     * @param $models_id the model ID
     *
     * @return true if more than one value to inject, false if not
-    **/
-   static function getSeveralMappedField($models_id)
-   {
+   **/
+   static function getSeveralMappedField($models_id) {
 
       global $DB;
 
@@ -177,7 +168,7 @@ class PluginDatainjectionMapping extends CommonDBTM
       $query  = "SELECT `value`,
                         COUNT(*) AS counter
                  FROM `glpi_plugin_datainjection_mappings`
-                 WHERE `models_id` = '" . $models_id . "'
+                 WHERE `models_id` = '".$models_id."'
                        AND `value` NOT IN ('none')
                  GROUP BY `value`
                  HAVING `counter` > 1";
@@ -189,22 +180,22 @@ class PluginDatainjectionMapping extends CommonDBTM
    }
 
 
-   /**
+    /**
     * @param $models_id
-    **/
-   static function getMappingsSortedByRank($models_id)
-   {
+   **/
+   static function getMappingsSortedByRank($models_id) {
 
       global $DB;
 
       $mappings = [];
       $query    = "SELECT `name`
                    FROM `glpi_plugin_datainjection_mappings`
-                   WHERE `models_id` = '" . $models_id . "'
+                   WHERE `models_id` = '".$models_id."'
                    ORDER BY `rank` ASC";
       foreach ($DB->request($query) as $data) {
          $mappings[] = $data['name'];
       }
       return $mappings;
    }
+
 }

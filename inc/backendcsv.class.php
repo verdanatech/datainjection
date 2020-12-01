@@ -31,6 +31,7 @@ class PluginDatainjectionBackendcsv extends PluginDatainjectionBackend
                                     implements PluginDatainjectionBackendInterface
 {
 
+   private $delimiter       = '';
    private $isHeaderPresent = true;
    private $file_handler    = null;
 
