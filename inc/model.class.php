@@ -72,7 +72,7 @@ class PluginDatainjectionModel extends CommonDBTM
 
    static function getTypeName($nb = 0) {
 
-      return __('Model management', 'datainjection');
+      return _n('Model', 'Models', $nb);
    }
 
 
@@ -303,7 +303,7 @@ class PluginDatainjectionModel extends CommonDBTM
       }
          echo "</select>";
 
-         $url = $CFG_GLPI["root_doc"]."/plugins/datainjection/ajax/dropdownSelectModel.php";
+         $url = $CFG_GLPI["root_doc"]."/plugins/datainjection"."/ajax/dropdownSelectModel.php";
          Ajax::updateItemOnSelectEvent("dropdown_models$rand", "span_injection", $url, $p);
    }
 

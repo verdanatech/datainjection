@@ -33,25 +33,32 @@ class PluginDatainjectionProfile extends Profile
 
    static $rightname = "profile";
 
-   static function getAllRights() {
+   static function getAllRights()
+   {
 
       $rights = [
-        ['itemtype'  => 'PluginDatainjectionModel',
-              'label'     => __('Model management', 'datainjection'),
-              'field'     => 'plugin_datainjection_model'],
-        ['itemtype'  => 'PluginDatainjectionModel',
-              'label'     => __('Injection of the file', 'datainjection'),
-              'field'     => 'plugin_datainjection_use',
-              'rights'    => [READ => __('Read')]]];
+         [
+            'itemtype'  => 'PluginDatainjectionModel',
+            'label'     => __('Model management', 'datainjection'),
+            'field'     => 'plugin_datainjection_model'
+         ],
+         [
+            'itemtype'  => 'PluginDatainjectionModel',
+            'label'     => __('Injection of the file', 'datainjection'),
+            'field'     => 'plugin_datainjection_use',
+            'rights'    => [READ => __('Read')]
+         ]
+      ];
       return $rights;
    }
 
-    /**
+   /**
     * Clean profiles_id from plugin's profile table
     *
     * @param $ID
-   **/
-   function cleanProfiles($ID) {
+    **/
+   function cleanProfiles($ID)
+   {
 
       global $DB;
       $query = "DELETE FROM `glpi_profiles`
@@ -60,7 +67,8 @@ class PluginDatainjectionProfile extends Profile
       $DB->query($query);
    }
 
-   function getTabNameForItem(CommonGLPI $item, $withtemplate = 0) {
+   function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
+   {
 
       if ($item->getType() == 'Profile') {
          if ($item->getField('interface') == 'central') {
@@ -72,31 +80,33 @@ class PluginDatainjectionProfile extends Profile
    }
 
 
-   static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0) {
+   static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
+   {
 
       if ($item->getType() == 'Profile') {
          $profile = new self();
          $ID   = $item->getField('id');
          //In case there's no right datainjection for this profile, create it
          self::addDefaultProfileInfos(
-             $item->getID(),
-             ['plugin_datainjection_model' => 0]
+            $item->getID(),
+            ['plugin_datainjection_model' => 0]
          );
          $profile->showForm($ID);
       }
       return true;
    }
 
-    /**
+   /**
     * @param $profile
-   **/
-   static function addDefaultProfileInfos($profiles_id, $rights) {
+    **/
+   static function addDefaultProfileInfos($profiles_id, $rights)
+   {
 
       $profileRight = new ProfileRight();
       foreach ($rights as $right => $value) {
          if (!countElementsInTable(
-             'glpi_profilerights',
-             ['profiles_id' => $profiles_id, 'name' => $right]
+            'glpi_profilerights',
+            ['profiles_id' => $profiles_id, 'name' => $right]
          )) {
             $myright['profiles_id'] = $profiles_id;
             $myright['name']        = $right;
@@ -109,22 +119,26 @@ class PluginDatainjectionProfile extends Profile
       }
    }
 
-    /**
+   /**
     * @param $ID  integer
     */
-   static function createFirstAccess($profiles_id) {
+   static function createFirstAccess($profiles_id)
+   {
 
-      include_once GLPI_ROOT."/plugins/datainjection/inc/profile.class.php";
+      include_once Plugin::getPhpDir('datainjection') . "/inc/profile.class.php";
       foreach (self::getAllRights() as $right) {
          self::addDefaultProfileInfos(
-             $profiles_id,
-             ['plugin_datainjection_model' => ALLSTANDARDRIGHT,
-             'plugin_datainjection_use' => READ]
+            $profiles_id,
+            [
+               'plugin_datainjection_model' => ALLSTANDARDRIGHT,
+               'plugin_datainjection_use' => READ
+            ]
          );
       }
    }
 
-   static function migrateProfiles() {
+   static function migrateProfiles()
+   {
       global $DB;
       if (!$DB->tableExists('glpi_plugin_datainjection_profiles')) {
          return true;
@@ -132,21 +146,21 @@ class PluginDatainjectionProfile extends Profile
 
       $profiles = getAllDatasFromTable('glpi_plugin_datainjection_profiles');
       foreach ($profiles as $id => $profile) {
-         $query = "SELECT `id` FROM `glpi_profiles` WHERE `name`='".$profile['name']."'";
+         $query = "SELECT `id` FROM `glpi_profiles` WHERE `name`='" . $profile['name'] . "'";
          $result = $DB->query($query);
          if ($DB->numrows($result) == 1) {
             $id = $DB->result($result, 0, 'id');
             switch ($profile['model']) {
-               case 'r' :
-                   $value = READ;
-                break;
+               case 'r':
+                  $value = READ;
+                  break;
                case 'w':
-                   $value = ALLSTANDARDRIGHT;
-                break;
+                  $value = ALLSTANDARDRIGHT;
+                  break;
                case 0:
                default:
                   $value = 0;
-                break;
+                  break;
             }
             self::addDefaultProfileInfos($id, ['plugin_datainjection_model' => $value]);
             if ($value > 0) {
@@ -158,7 +172,7 @@ class PluginDatainjectionProfile extends Profile
       }
    }
 
-    /**
+   /**
     * Show profile form
     *
     * @param $items_id integer id of the profile
@@ -166,14 +180,15 @@ class PluginDatainjectionProfile extends Profile
     *
     * @return nothing
     **/
-   function showForm($profiles_id = 0, $openform = true, $closeform = true) {
+   function showForm($profiles_id = 0, $openform = true, $closeform = true)
+   {
 
       echo "<div class='firstbloc'>";
       if (($canedit = Session::haveRightsOr(self::$rightname, [CREATE, UPDATE, PURGE]))
-          && $openform
+         && $openform
       ) {
          $profile = new Profile();
-         echo "<form method='post' action='".$profile->getFormURL()."'>";
+         echo "<form method='post' action='" . $profile->getFormURL() . "'>";
       }
 
       $profile = new Profile();
@@ -181,20 +196,23 @@ class PluginDatainjectionProfile extends Profile
 
       $rights = self::getAllRights();
       $profile->displayRightsChoiceMatrix(
-          self::getAllRights(),
-          ['canedit'       => $canedit,
-                                              'default_class' => 'tab_bg_2',
-          'title'         => __('General')]
+         self::getAllRights(),
+         [
+            'canedit'       => $canedit,
+            'default_class' => 'tab_bg_2',
+            'title'         => __('General')
+         ]
       );
-      if ($canedit
-          && $closeform
+      if (
+         $canedit
+         && $closeform
       ) {
-                                            echo "<div class='center'>";
-                                            echo Html::hidden('id', ['value' => $profiles_id]);
-                                            echo Html::submit(_sx('button', 'Save'), ['name' => 'update']);
-                                            echo "</div>\n";
-                                            Html::closeForm();
+         echo "<div class='center'>";
+         echo Html::hidden('id', ['value' => $profiles_id]);
+         echo Html::submit(_sx('button', 'Save'), ['name' => 'update']);
+         echo "</div>\n";
+         Html::closeForm();
       }
-       echo "</div>";
+      echo "</div>";
    }
 }
