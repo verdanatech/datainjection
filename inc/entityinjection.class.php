@@ -101,7 +101,6 @@ class PluginDatainjectionEntityInjection extends Entity
     * @param $rights    array
    **/
    function customimport($input = [], $add = true, $rights = []) {
-
       if (!isset($input['completename']) || empty($input['completename'])) {
          return -1;
       }
@@ -143,6 +142,7 @@ class PluginDatainjectionEntityInjection extends Entity
 
       foreach ($names as $name) {
          $name = trim($name);
+
          $i--;
          $level++;
          if (empty($name)) {
@@ -167,6 +167,8 @@ class PluginDatainjectionEntityInjection extends Entity
             'glpi_entities',
             ['name' => $name, 'entities_id' => $parent]
          );
+
+         // Entity doesn't exists => create it
          if (empty($results)) {
             $parent = $em->import($tmp);
          } else {
@@ -175,6 +177,7 @@ class PluginDatainjectionEntityInjection extends Entity
             $parent = $ent['id'];
          }
       }
+
       return $parent;
    }
 

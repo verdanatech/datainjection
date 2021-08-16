@@ -42,7 +42,7 @@ class PluginDatainjectionMenu extends CommonGLPI
 
       global $CFG_GLPI;
 
-      $injectionFormUrl = '/plugins/datainjection/front/clientinjection.form.php';
+      $injectionFormUrl = "/".Plugin::getWebDir('datainjection', false).'/front/clientinjection.form.php';
 
       $menu = [
          'title' => self::getMenuName(),
@@ -79,7 +79,6 @@ class PluginDatainjectionMenu extends CommonGLPI
             $menu['options']['model']['links']['search'] = Toolbox::getItemTypeSearchUrl('PluginDatainjectionModel', false);
             $menu['options']['client']['links'][$image_model]  = Toolbox::getItemTypeSearchUrl('PluginDatainjectionModel', false);
          }
-
 
          if (Session::haveRight('plugin_datainjection_model', UPDATE) || Session::haveRight('plugin_datainjection_model', CREATE)) {
             $menu['options']['model']['links']['add'] = Toolbox::getItemTypeFormUrl('PluginDatainjectionModel', false);

@@ -1691,7 +1691,7 @@ class PluginDatainjectionCommonInjectionLib
                //Type is a relation : check it this relation still exists
                //Define the side of the relation to use
 
-               if (method_exists($item, 'relationSide')) {
+               if (method_exists($injectionClass, 'relationSide')) {
                   $side = $injectionClass->relationSide();
                } else {
                   $side = true;
@@ -1795,7 +1795,7 @@ class PluginDatainjectionCommonInjectionLib
 
             $result = $DB->query($sql);
             if ($DB->numrows($result) > 0) {
-               $db_fields = $DB->fetch_assoc($result);
+               $db_fields = $DB->fetchAssoc($result);
                foreach ($db_fields as $key => $value) {
                   $this->setValueForItemtype($itemtype, $key, $value, true);
                }
