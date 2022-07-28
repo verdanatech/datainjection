@@ -1,32 +1,32 @@
 <?php
-/*
- * @version $Id: HEADER 14684 2011-06-11 06:32:40Z remi $
- LICENSE
 
- This file is part of the datainjection plugin.
-
- Datainjection plugin is free software; you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation; either version 2 of the License, or
- (at your option) any later version.
-
- Datainjection plugin is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
-
- You should have received a copy of the GNU General Public License
- along with datainjection. If not, see <http://www.gnu.org/licenses/>.
- --------------------------------------------------------------------------
- @package   datainjection
- @author    the datainjection plugin team
- @copyright Copyright (c) 2010-2017 Datainjection plugin team
- @license   GPLv2+
-            http://www.gnu.org/licenses/gpl.txt
- @link      https://github.com/pluginsGLPI/datainjection
- @link      http://www.glpi-project.org/
- @since     2009
- ---------------------------------------------------------------------- */
+/**
+ * -------------------------------------------------------------------------
+ * DataInjection plugin for GLPI
+ * -------------------------------------------------------------------------
+ *
+ * LICENSE
+ *
+ * This file is part of DataInjection.
+ *
+ * DataInjection is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * DataInjection is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with DataInjection. If not, see <http://www.gnu.org/licenses/>.
+ * -------------------------------------------------------------------------
+ * @copyright Copyright (C) 2007-2022 by DataInjection plugin team.
+ * @license   GPLv2 https://www.gnu.org/licenses/gpl-2.0.html
+ * @link      https://github.com/pluginsGLPI/datainjection
+ * -------------------------------------------------------------------------
+ */
 
 class PluginDatainjectionCommonInjectionLib
 {
@@ -347,7 +347,8 @@ class PluginDatainjectionCommonInjectionLib
       //2 : id
       // 19 : date_mod
       // 80 : entity
-      $blacklist = [2, 19, 80, 201, 202, 203, 204];
+      // 121 : date_creation
+      $blacklist = [2, 19, 80, 121, 201, 202, 203, 204];
 
       $raw_options_to_blacklist = [];
 
@@ -504,8 +505,9 @@ class PluginDatainjectionCommonInjectionLib
                $searchOption = self::findSearchOption($searchOptions, $field);
                //searchoption relation type is already manage by manageRelations()
                //skip it
-               if ((isset($searchOption['displaytype']) && $searchOption['displaytype'] != 'relation')
-                  || !isset($searchOption['displaytype'])) {
+               if ($searchOption !== false &&
+                   ((isset($searchOption['displaytype']) && $searchOption['displaytype'] != 'relation')
+                  || !isset($searchOption['displaytype']))) {
                      $this->getFieldValue($injectionClass, $itemtype, $searchOption, $field, $value);
                }
             }
@@ -1511,13 +1513,34 @@ class PluginDatainjectionCommonInjectionLib
 
       foreach ($values as $key => $value) {
          $option = self::findSearchOption($options, $key);
-         if (!isset($option['checktype']) || $option['checktype'] != self::FIELD_VIRTUAL) {
+         if ($option !== false && (!isset($option['checktype']) || $option['checktype'] != self::FIELD_VIRTUAL)) {
             //If field is a dropdown and value is '', then replace it by 0
             if (self::isFieldADropdown($option['displaytype']) && $value == self::EMPTY_VALUE) {
                $toinject[$key] = self::DROPDOWN_EMPTY_VALUE;
             } else {
                $toinject[$key] = $value;
             }
+         }
+
+         if ($key === 'entities_id') {
+            $toinject[$key] = $value;
+         }
+
+         //useful for fields
+         if (strpos(get_class($item), 'PluginFields') !== false &&
+           ($key === 'items_id' || $key === 'itemtype')) {
+            $toinject[$key] = $value;
+         }
+
+         //useful for Infocom
+         if (get_class($item) == Infocom::getType() &&
+         ($key === 'items_id' || $key === 'itemtype')) {
+            $toinject[$key] = $value;
+         }
+
+         //keep id in case of update
+         if (!$add && $key === 'id') {
+            $toinject[$key] = $value;
          }
       }
 
@@ -2003,6 +2026,13 @@ class PluginDatainjectionCommonInjectionLib
             }
          }
       }
+
+       // Drop not injectable fields
+       foreach ($type_searchOptions as $id => $tmp) {
+           if (!isset($tmp['injectable']) || $tmp['injectable'] <= 0) {
+               unset($type_searchOptions[$id]);
+           }
+       }
 
       foreach (['displaytype', 'checktype'] as $paramtype) {
          if (isset($options[$paramtype])) {

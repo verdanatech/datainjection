@@ -29,32 +29,24 @@
  */
 
 if (!defined('GLPI_ROOT')) {
-   die("Sorry. You can't access directly to this file");
+    die("Sorry. You can't access directly to this file");
 }
 
-class PluginDatainjectionNotepadInjection extends Notepad
-                                                implements PluginDatainjectionInjectionInterface {
-
+class PluginDatainjectionCertificateInjection extends Certificate
+                                            implements PluginDatainjectionInjectionInterface
+{
 
    static function getTable($classname = null) {
-
       $parenttype = get_parent_class();
       return $parenttype::getTable();
-
    }
 
    function isPrimaryType() {
-      return false;
+      return true;
    }
-
 
    function connectedTo() {
-      return ['Computer', 'NetworkEquipment', 'Printer'];
-   }
-
-   function customDataAlreadyInDB($injectionClass, $values, $options) {
-      //Do not manage updating notes: only creation
-      return false;
+      return [];
    }
 
    /**
@@ -62,50 +54,29 @@ class PluginDatainjectionNotepadInjection extends Notepad
    **/
    function getOptions($primary_type = '') {
 
-      $tab = Notepad::rawSearchOptionsToAdd();
-      $searchoptions = [];
-      foreach ($tab as $option) {
-         if (is_numeric($option['id'])) {
-            if ($option['table'] != 'glpi_notepads') {
-               $option['linkfield'] = getForeignKeyFieldForTable($option['table']);
-            } else {
-               $option['linkfield'] = $option['field'];
-            }
-            $searchoptions[$option['id']] = $option;
-         }
-      }
+      $tab           = Search::getOptions(get_parent_class($this));
 
-      $options['ignore_fields'] = [201, 203, 204];
-      $options['displaytype'] = [
-         "multiline_text" => [200],
-         "dropdown"       => [202]
-
+      //Remove some options because some fields cannot be imported
+      $blacklist     = PluginDatainjectionCommonInjectionLib::getBlacklistedOptions(get_parent_class($this));
+      $notimportable = [2, 14, 19, 61, 72, 121]; 
+ 
+      $options['ignore_fields'] = array_merge($blacklist, $notimportable);
+      $options['displaytype']   = [
+               "multiline_text" => [11, 12, 13, 15],
+               "dropdown"       => [7, 23, 24, 31, 49, 71, 80], 
+               "user"           => [24, 70], 
+               "bool"           => [9, 86]
       ];
 
-      return PluginDatainjectionCommonInjectionLib::addToSearchOptions($searchoptions, $options, $this);
+      return PluginDatainjectionCommonInjectionLib::addToSearchOptions($tab, $options, $this);
    }
-
 
    /**
     * @see plugins/datainjection/inc/PluginDatainjectionInjectionInterface::addOrUpdateObject()
    **/
    function addOrUpdateObject($values = [], $options = []) {
-
       $lib = new PluginDatainjectionCommonInjectionLib($this, $values, $options);
       $lib->processAddOrUpdate();
       return $lib->getInjectionResults();
    }
-
-
-   /**
-    * @param $primary_type
-    * @param $values
-   **/
-   function addSpecificNeededFields($primary_type, $values) {
-
-      $fields['items_id'] = $values[$primary_type]['id'];
-      $fields['itemtype'] = $primary_type;
-      return $fields;
-   }
-
 }
