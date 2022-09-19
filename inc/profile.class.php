@@ -1,32 +1,32 @@
 <?php
-/*
- * @version $Id: HEADER 14684 2011-06-11 06:32:40Z remi $
- LICENSE
 
- This file is part of the datainjection plugin.
-
- Datainjection plugin is free software; you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation; either version 2 of the License, or
- (at your option) any later version.
-
- Datainjection plugin is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
-
- You should have received a copy of the GNU General Public License
- along with datainjection. If not, see <http://www.gnu.org/licenses/>.
- --------------------------------------------------------------------------
- @package   datainjection
- @author    the datainjection plugin team
- @copyright Copyright (c) 2010-2017 Datainjection plugin team
- @license   GPLv2+
-            http://www.gnu.org/licenses/gpl.txt
- @link      https://github.com/pluginsGLPI/datainjection
- @link      http://www.glpi-project.org/
- @since     2009
- ---------------------------------------------------------------------- */
+/**
+ * -------------------------------------------------------------------------
+ * DataInjection plugin for GLPI
+ * -------------------------------------------------------------------------
+ *
+ * LICENSE
+ *
+ * This file is part of DataInjection.
+ *
+ * DataInjection is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * DataInjection is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with DataInjection. If not, see <http://www.gnu.org/licenses/>.
+ * -------------------------------------------------------------------------
+ * @copyright Copyright (C) 2007-2022 by DataInjection plugin team.
+ * @license   GPLv2 https://www.gnu.org/licenses/gpl-2.0.html
+ * @link      https://github.com/pluginsGLPI/datainjection
+ * -------------------------------------------------------------------------
+ */
 
 class PluginDatainjectionProfile extends Profile
 {
@@ -114,7 +114,7 @@ class PluginDatainjectionProfile extends Profile
     */
    static function createFirstAccess($profiles_id) {
 
-      include_once GLPI_ROOT."/plugins/datainjection/inc/profile.class.php";
+      include_once Plugin::getPhpDir('datainjection')."/inc/profile.class.php";
       foreach (self::getAllRights() as $right) {
          self::addDefaultProfileInfos(
              $profiles_id,
@@ -130,7 +130,7 @@ class PluginDatainjectionProfile extends Profile
          return true;
       }
 
-      $profiles = getAllDatasFromTable('glpi_plugin_datainjection_profiles');
+      $profiles = getAllDataFromTable('glpi_plugin_datainjection_profiles');
       foreach ($profiles as $id => $profile) {
          $query = "SELECT `id` FROM `glpi_profiles` WHERE `name`='".$profile['name']."'";
          $result = $DB->query($query);
@@ -158,42 +158,32 @@ class PluginDatainjectionProfile extends Profile
       }
    }
 
-    /**
-    * Show profile form
-    *
-    * @param $items_id integer id of the profile
-    * @param $target value url of target
-    *
-    * @return nothing
-    **/
-   function showForm($profiles_id = 0, $openform = true, $closeform = true) {
+   function showForm($ID, $options = []) {
 
       echo "<div class='firstbloc'>";
-      if (($canedit = Session::haveRightsOr(self::$rightname, [CREATE, UPDATE, PURGE]))
-          && $openform
-      ) {
+      if ($canedit = Session::haveRightsOr(self::$rightname, [CREATE, UPDATE, PURGE])) {
          $profile = new Profile();
          echo "<form method='post' action='".$profile->getFormURL()."'>";
       }
 
       $profile = new Profile();
-      $profile->getFromDB($profiles_id);
+      $profile->getFromDB($ID);
 
       $rights = self::getAllRights();
       $profile->displayRightsChoiceMatrix(
-          self::getAllRights(),
-          ['canedit'       => $canedit,
-                                              'default_class' => 'tab_bg_2',
-          'title'         => __('General')]
+          $rights,
+          [
+             'canedit'       => $canedit,
+             'default_class' => 'tab_bg_2',
+             'title'         => __('General')
+          ]
       );
-      if ($canedit
-          && $closeform
-      ) {
-                                            echo "<div class='center'>";
-                                            echo Html::hidden('id', ['value' => $profiles_id]);
-                                            echo Html::submit(_sx('button', 'Save'), ['name' => 'update']);
-                                            echo "</div>\n";
-                                            Html::closeForm();
+      if ($canedit) {
+         echo "<div class='center'>";
+         echo Html::hidden('id', ['value' => $ID]);
+         echo Html::submit(_sx('button', 'Save'), ['name' => 'update']);
+         echo "</div>\n";
+         Html::closeForm();
       }
        echo "</div>";
    }

@@ -1,32 +1,32 @@
 <?php
-/*
- * @version $Id: HEADER 14684 2011-06-11 06:32:40Z remi $
- LICENSE
 
- This file is part of the datainjection plugin.
-
- Datainjection plugin is free software; you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation; either version 2 of the License, or
- (at your option) any later version.
-
- Datainjection plugin is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
-
- You should have received a copy of the GNU General Public License
- along with datainjection. If not, see <http://www.gnu.org/licenses/>.
- --------------------------------------------------------------------------
- @package   datainjection
- @author    the datainjection plugin team
- @copyright Copyright (c) 2010-2017 Datainjection plugin team
- @license   GPLv2+
-            http://www.gnu.org/licenses/gpl.txt
- @link      https://github.com/pluginsGLPI/datainjection
- @link      http://www.glpi-project.org/
- @since     2009
- ---------------------------------------------------------------------- */
+/**
+ * -------------------------------------------------------------------------
+ * DataInjection plugin for GLPI
+ * -------------------------------------------------------------------------
+ *
+ * LICENSE
+ *
+ * This file is part of DataInjection.
+ *
+ * DataInjection is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * DataInjection is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with DataInjection. If not, see <http://www.gnu.org/licenses/>.
+ * -------------------------------------------------------------------------
+ * @copyright Copyright (C) 2007-2022 by DataInjection plugin team.
+ * @license   GPLv2 https://www.gnu.org/licenses/gpl-2.0.html
+ * @link      https://github.com/pluginsGLPI/datainjection
+ * -------------------------------------------------------------------------
+ */
 
 class PluginDatainjectionModel extends CommonDBTM
 {
@@ -303,7 +303,7 @@ class PluginDatainjectionModel extends CommonDBTM
       }
          echo "</select>";
 
-         $url = $CFG_GLPI["root_doc"]."/plugins/datainjection/ajax/dropdownSelectModel.php";
+         $url = Plugin::getWebDir('datainjection')."/ajax/dropdownSelectModel.php";
          Ajax::updateItemOnSelectEvent("dropdown_models$rand", "span_injection", $url, $p);
    }
 
@@ -618,7 +618,12 @@ class PluginDatainjectionModel extends CommonDBTM
       echo "<td><input type='hidden' name='users_id' value='".Session::getLoginUserID()."'>".
                __('Name')."</td>";
       echo "<td>";
-      Html::autocompletionTextField($this, "name");
+      echo Html::input(
+         'name',
+         [
+            'value' => $this->fields["name"],
+         ]
+      );
       echo "</td>";
       echo "<td colspan='2'></td></tr>";
 
@@ -1409,8 +1414,7 @@ class PluginDatainjectionModel extends CommonDBTM
                $plugin = new Plugin();
                if ($plugin->isActivated('genericobject')
                   && array_key_exists($model->fields['itemtype'], PluginGenericobjectType::getTypes())) {
-                  global $CFG_GLPI;
-                  $url = $CFG_GLPI['root_doc']."/plugins/genericobject/front/object.form.php".
+                  $url = Plugin::getWebDir('datainjection')."/front/object.form.php".
                   "?itemtype=".$model->fields['itemtype']."&id=".$result[$model->fields['itemtype']];
                }
 
@@ -1434,6 +1438,8 @@ class PluginDatainjectionModel extends CommonDBTM
    static function showLogResults($models_id) {
 
       $logresults = self::prepareLogResults($models_id);
+      $resume = [];
+      $nblines = 0;
       if (!empty($logresults)) {
          if (!empty($logresults[PluginDatainjectionCommonInjectionLib::SUCCESS])) {
             echo "<table>\n";
@@ -1461,6 +1467,11 @@ class PluginDatainjectionModel extends CommonDBTM
                echo "<td>".nl2br($result['status_message'])."</td>";
                echo "<td>".$result['type']."</td>";
                echo "<td>".$result['url']."</td><tr>\n";
+               if(!isset($resume[$result['status']][$result['type']])) {
+                  $resume[$result['status']][$result['type']] = 0;
+               }
+               $resume[$result['status']][$result['type']]++;
+               $nblines++;
             }
             echo "</table></div>\n";
          }
@@ -1493,9 +1504,58 @@ class PluginDatainjectionModel extends CommonDBTM
                echo "<td>".nl2br($result['status_message'])."</td>";
                echo "<td>".$result['type']."</td>";
                echo "<td>".$result['url']."</td><tr>\n";
+               if(!isset($resume[$result['status']][$result['type']])) {
+                  $resume[$result['status']][$result['type']] = 0;
+               }
+               $resume[$result['status']][$result['type']]++;
+               $nblines++;
             }
             echo "</table></div>\n";
             echo "<script type='text/javascript'>document.getElementById('log1_table').style.display='none'</script>";
+         }
+
+         if (!empty($resume)) {
+            echo "<table>";
+            echo "<tr>";
+            echo "<td style='width:30px'>";
+            echo "<a href=\"javascript:show_log('3')\"><img src='../pics/minus.png' alt='minus' id='log3'>";
+            echo "</a></td>";
+            echo "<td style='width: 450px;font-size: 14px;font-weight: bold;padding-left: 20px'>".
+               __('Global report', 'datainjection')."</td>";
+            echo "<td style='width: 450px;font-style:italic'>" . __('Number of lines processed', 'datainjection') . " : " . $nblines . "</td>";
+            echo "</tr>\n";
+            echo "</table>\n";
+
+            echo "<div id='log2_table'>";
+            echo "<table class='tab_cadre_fixe center'>\n";
+            echo "<th></th>";
+            echo "<th>" . __('Data Import', 'datainjection') . "</th>";
+            echo "<th>" . __('Injection type', 'datainjection') . "</th>";
+            echo "<th>" . __('Counter', 'datainjection') . "</th>";
+            echo "</tr>";
+            foreach ($resume as $status => $types) {
+               echo "<tr>";
+               $html = '';
+               $rowspan = 0;
+               foreach ($types as $type => $value) {
+                  $html .= "<td>" . $type .  "</td>";
+                  $html .= "<td>" . $value . "</td>";
+                  $rowspan++;
+               }
+               echo "<td rowspan=" . $rowspan . ">";
+               if ($status == PluginDatainjectionCommonInjectionLib::SUCCESS) {
+                  echo "<img src='../pics/ok.png'> ";
+               } else {
+                  echo "<img src='../pics/notok.png'> ";
+               }
+               echo "</td>";
+               echo "<td rowspan=" . $rowspan . ">";
+               echo PluginDatainjectionCommonInjectionLib::getLogLabel($status);
+               echo "</td>";
+               echo $html;
+               echo "</tr>";
+            }
+            echo "</table></div>\n";
          }
       }
 

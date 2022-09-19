@@ -1,39 +1,39 @@
 <?php
-/*
- * @version $Id: HEADER 14684 2011-06-11 06:32:40Z remi $
- LICENSE
 
- This file is part of the datainjection plugin.
+/**
+ * -------------------------------------------------------------------------
+ * DataInjection plugin for GLPI
+ * -------------------------------------------------------------------------
+ *
+ * LICENSE
+ *
+ * This file is part of DataInjection.
+ *
+ * DataInjection is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * DataInjection is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with DataInjection. If not, see <http://www.gnu.org/licenses/>.
+ * -------------------------------------------------------------------------
+ * @copyright Copyright (C) 2007-2022 by DataInjection plugin team.
+ * @license   GPLv2 https://www.gnu.org/licenses/gpl-2.0.html
+ * @link      https://github.com/pluginsGLPI/datainjection
+ * -------------------------------------------------------------------------
+ */
 
- Datainjection plugin is free software; you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation; either version 2 of the License, or
- (at your option) any later version.
-
- Datainjection plugin is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
-
- You should have received a copy of the GNU General Public License
- along with datainjection. If not, see <http://www.gnu.org/licenses/>.
- --------------------------------------------------------------------------
- @package   datainjection
- @author    the datainjection plugin team
- @copyright Copyright (c) 2010-2017 Datainjection plugin team
- @license   GPLv2+
-            http://www.gnu.org/licenses/gpl.txt
- @link      https://github.com/pluginsGLPI/datainjection
- @link      http://www.glpi-project.org/
- @since     2009
- ---------------------------------------------------------------------- */
-
-define ('PLUGIN_DATAINJECTION_VERSION', '2.7.1');
+define ('PLUGIN_DATAINJECTION_VERSION', '2.12.0');
 
 // Minimal GLPI version, inclusive
-define("PLUGIN_DATAINJECTION_MIN_GLPI", "9.4");
+define("PLUGIN_DATAINJECTION_MIN_GLPI", "10.0.0");
 // Maximum GLPI version, exclusive
-define("PLUGIN_DATAINJECTION_MAX_GLPI", "9.5");
+define("PLUGIN_DATAINJECTION_MAX_GLPI", "10.0.99");
 
 if (!defined("PLUGIN_DATAINJECTION_UPLOAD_DIR")) {
     define("PLUGIN_DATAINJECTION_UPLOAD_DIR", GLPI_PLUGIN_DOC_DIR."/datainjection/");
@@ -73,7 +73,7 @@ function plugin_init_datainjection() {
           = ['Profile' => ['PluginDatainjectionProfile', 'purgeProfiles']];
 
          // Css file
-      if (strpos($_SERVER['REQUEST_URI'], "plugins/datainjection") !== false) {
+      if (strpos($_SERVER['REQUEST_URI'] ?? '', Plugin::getPhpDir('datainjection', false)) !== false) {
          $PLUGIN_HOOKS['add_css']['datainjection'] = 'css/datainjection.css';
       }
 
@@ -106,35 +106,6 @@ function plugin_version_datainjection() {
 }
 
 
-function plugin_datainjection_check_prerequisites() {
-
-   //Version check is not done by core in GLPI < 9.2 but has to be delegated to core in GLPI >= 9.2.
-   $version = preg_replace('/^((\d+\.?)+).*$/', '$1', GLPI_VERSION);
-   if (version_compare($version, '9.2', '<')) {
-      $matchMinGlpiReq = version_compare($version, PLUGIN_DATAINJECTION_MIN_GLPI, '>=');
-      $matchMaxGlpiReq = version_compare($version, PLUGIN_DATAINJECTION_MAX_GLPI, '<');
-
-      if (!$matchMinGlpiReq || !$matchMaxGlpiReq) {
-         echo vsprintf(
-            'This plugin requires GLPI >= %1$s and < %2$s.',
-            [
-               PLUGIN_DATAINJECTION_MIN_GLPI,
-               PLUGIN_DATAINJECTION_MAX_GLPI,
-            ]
-         );
-         return false;
-      }
-   }
-
-   return true;
-}
-
-
-function plugin_datainjection_check_config($verbose = false) {
-   return true;
-}
-
-
 /**
  * Return all types that can be injected using datainjection
  *
@@ -152,6 +123,8 @@ function getTypesToInject() {
    $INJECTABLE_TYPES = ['PluginDatainjectionCartridgeItemInjection'              => 'datainjection',
                         'PluginDatainjectionBudgetInjection'                      => 'datainjection',
                         'PluginDatainjectionComputerInjection'                    => 'datainjection',
+                        'PluginDatainjectionDatabaseInjection'                    => 'datainjection',
+                        'PluginDatainjectionDatabaseInstanceInjection'            => 'datainjection',
                         'PluginDatainjectionNotepadInjection'                     => 'datainjection',
                         'PluginDatainjectionComputer_ItemInjection'               => 'datainjection',
                         'PluginDatainjectionConsumableItemInjection'              => 'datainjection',
@@ -175,8 +148,8 @@ function getTypesToInject() {
                         'PluginDatainjectionProfileInjection'                     => 'datainjection',
                         'PluginDatainjectionProfile_UserInjection'                => 'datainjection',
                         'PluginDatainjectionSoftwareInjection'                    => 'datainjection',
-                        'PluginDatainjectionComputer_SoftwareVersionInjection'    => 'datainjection',
-                        'PluginDatainjectionComputer_SoftwareLicenseInjection'    => 'datainjection',
+                        'PluginDatainjectionItem_SoftwareVersionInjection'        => 'datainjection',
+                        'PluginDatainjectionItem_SoftwareLicenseInjection'        => 'datainjection',
                         'PluginDatainjectionSoftwareLicenseInjection'             => 'datainjection',
                         'PluginDatainjectionSoftwareVersionInjection'             => 'datainjection',
                         'PluginDatainjectionSupplierInjection'                    => 'datainjection',
@@ -190,6 +163,7 @@ function getTypesToInject() {
                         'PluginDatainjectionKnowbaseItemInjection'                => 'datainjection',
                         'PluginDatainjectionITILCategoryInjection'                => 'datainjection',
                         'PluginDatainjectionTaskCategoryInjection'                => 'datainjection',
+                        'PluginDatainjectionTaskTemplateInjection'                => 'datainjection',
                         'PluginDatainjectionSolutionTypeInjection'                => 'datainjection',
                         'PluginDatainjectionRequestTypeInjection'                 => 'datainjection',
                         'PluginDatainjectionSolutionTemplateInjection'            => 'datainjection',
@@ -237,7 +211,9 @@ function getTypesToInject() {
                         'PluginDatainjectionDeviceHardDriveInjection'             => 'datainjection',
                         'PluginDatainjectionDeviceMotherboardInjection'           => 'datainjection',
                         'PluginDatainjectionDeviceDriveInjection'                 => 'datainjection',
-                        'PluginDatainjectionDeviceNetworkCardInjection'           => 'datainjection'
+                        'PluginDatainjectionDeviceNetworkCardInjection'           => 'datainjection',
+                        'PluginDatainjectionApplianceInjection'                   => 'datainjection',
+                        'PluginDatainjectionCertificateInjection'                 => 'datainjection'
    ];
    //Add plugins
    Plugin::doHook('plugin_datainjection_populate');
@@ -254,12 +230,7 @@ function plugin_datainjection_migratetypes_datainjection($types) {
 
 function plugin_datainjection_checkDirectories() {
 
-   $plugin = new Plugin();
-
-   if ($plugin->isInstalled('datainjection')
-       && (!file_exists(PLUGIN_DATAINJECTION_UPLOAD_DIR)
-       || !is_writable(PLUGIN_DATAINJECTION_UPLOAD_DIR))
-   ) {
+   if (!file_exists(PLUGIN_DATAINJECTION_UPLOAD_DIR) || !is_writable(PLUGIN_DATAINJECTION_UPLOAD_DIR)) {
       return false;
    }
    return true;
