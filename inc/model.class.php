@@ -22,7 +22,7 @@
  * You should have received a copy of the GNU General Public License
  * along with DataInjection. If not, see <http://www.gnu.org/licenses/>.
  * -------------------------------------------------------------------------
- * @copyright Copyright (C) 2007-2022 by DataInjection plugin team.
+ * @copyright Copyright (C) 2007-2023 by DataInjection plugin team.
  * @license   GPLv2 https://www.gnu.org/licenses/gpl-2.0.html
  * @link      https://github.com/pluginsGLPI/datainjection
  * -------------------------------------------------------------------------
@@ -432,17 +432,6 @@ class PluginDatainjectionModel extends CommonDBTM
       ];
 
       $tab[] = [
-         'id'            => 9,
-         'table'         => $this->getTable(),
-         'field'         => 'perform_network_connection',
-         'name'          => __(
-            'Try to establish network connection is possible',
-            'datainjection'
-            ),
-         'datatype'      => 'bool',
-      ];
-
-      $tab[] = [
          'id'            => 10,
          'table'         => $this->getTable(),
          'field'         => 'port_unicity',
@@ -706,19 +695,6 @@ class PluginDatainjectionModel extends CommonDBTM
        Dropdown::showFromArray(
           'float_format', PluginDatainjectionDropdown::floatFormats(),
           ['value' => $this->fields['float_format']]
-       );
-       echo "</td></tr>";
-
-       echo "<tr class='tab_bg_1'>";
-       echo "<td>".__('Try to establish network connection is possible', 'datainjection')."</td>";
-       echo "<td>";
-       Dropdown::showYesNo("perform_network_connection", $this->fields['perform_network_connection']);
-       echo "</td>";
-       echo "<td>".__('Port unicity criteria', 'datainjection')."</td>";
-       echo "<td>";
-       Dropdown::showFromArray(
-          'port_unicity', PluginDatainjectionDropdown::portUnicityValues(),
-          ['value' => $this->fields['port_unicity']]
        );
        echo "</td></tr>";
 
