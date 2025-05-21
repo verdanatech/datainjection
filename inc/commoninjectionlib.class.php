@@ -606,14 +606,51 @@ class PluginDatainjectionCommonInjectionLib
                 $item    = new $tmptype();
                 if ($item instanceof CommonTreeDropdown) {
                    // use findID instead of getID
-                    $input =  ['completename' => $value,
+                    $input =  [
+                        'completename' => $value,
                         'entities_id'  => $this->entity
                     ];
 
-                    if ($item->canCreate() && $this->rights['add_dropdown']) {
-                        $id = $item->import($input);
+                    if ($item->getType() == 'Entity') { // Blocks entity creation. The findID method only searches for direct sub-entities of the root, not deeper levels.
+                        $crit = 'name';
+                        if (strpos($input['completename'], '>')) {
+                            $crit = 'completename';
+                        }
+                        $entity = new Entity();
+                        $result = $entity->getFromDBByCrit(
+                            [
+                                $crit => $input['completename'],
+                                'entities_id' => $input['entities_id']
+                            ]
+                        );
+
+                        if ($result !== false) {
+                            $input['entities_id'] = $entity->fields['id'];
+                        }
+
+                        $sons = getSonsOf('glpi_entities', $input['entities_id']);
+                        if ($result === false && !empty($sons)) {
+                            foreach ($sons as $son_id) {
+                                $result = $entity->getFromDBByCrit(
+                                    [
+                                        $crit => $input['completename'],
+                                        'entities_id' => $son_id
+                                    ]
+                                );
+                                if ($result !== false) {
+                                    $input['entities_id'] = $entity->fields['id'];
+                                    break;
+                                }
+                            }
+                        }
+
+                        $id = $input['entities_id'];
                     } else {
-                        $id = $item->findID($input);
+                        if ($item->canCreate() && $this->rights['add_dropdown']) {
+                            $id = $item->import($input);
+                        } else {
+                            $id = $item->findID($input);
+                        }
                     }
                 } else if ($item instanceof CommonDropdown) {
                     if ($item->canCreate() && $this->rights['add_dropdown']) {
@@ -1359,7 +1396,9 @@ class PluginDatainjectionCommonInjectionLib
     private function addNecessaryFields()
     {
 
-        $this->setValueForItemtype($this->primary_type, 'entities_id', $this->entity);
+        if (!isset($this->values[$this->primary_type]['entities_id'])) {
+            $this->setValueForItemtype($this->primary_type, 'entities_id', $this->entity);
+        }
         if (method_exists($this->injectionClass, 'addSpecificNeededFields')) {
             $specific_fields = $this->injectionClass->addSpecificNeededFields(
                 $this->primary_type,
@@ -1606,7 +1645,7 @@ class PluginDatainjectionCommonInjectionLib
             //CommonDBRelation are managed separately, so related field should be ignored
             // Ex : User -> groups_id -> Group_User
             // groups_id should not be injected in User (field contains group name (string))
-            if ($option !== false && isset($option['displaytype']) && $option['displaytype'] == 'relation') {
+            if ($option !== false && isset($option['displaytype']) && $option['displaytype'] == 'relation' && !($item instanceof CommonDBRelation)) {
                 continue;
             }
 
@@ -2134,6 +2173,13 @@ class PluginDatainjectionCommonInjectionLib
                         $type_searchOptions[$id]['injectable'] = self::FIELD_VIRTUAL;
                     } else {
                         $type_searchOptions[$id]['injectable'] = self::FIELD_INJECTABLE;
+                    }
+
+                    //Some injection.class files are missing dropdown options. Set displaytype as dropdown if datatype is dropdown
+                    //$tmp['displaytype'] is still empty. Set to prevent overwriting on next IF
+                    if ((isset($tmp['datatype']) && $tmp['datatype'] == 'dropdown') && !isset($tmp['displaytype'])) {
+                        $type_searchOptions[$id]['displaytype'] = 'dropdown';
+                        $tmp['displaytype'] = 'dropdown';
                     }
 
                     if (isset($tmp['linkfield']) && !isset($tmp['displaytype'])) {
