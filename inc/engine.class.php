@@ -44,17 +44,17 @@ class PluginDatainjectionEngine
 
 
     /**
-    * @param $model
-    * @param $infos     array
-    * @param $entity             (default 0)
+    * @param mixed $model
+    * @param array $infos     array
+    * @param int|string $entity             (default 0)
     */
     public function __construct($model, $infos = [], $entity = 0)
     {
 
-       //Instanciate model
+        //Instanciate model
         $this->model = $model;
 
-       //Load model and mappings informations
+        //Load model and mappings informations
         $this->getModel()->loadMappings();
         $this->getModel()->populateSeveraltimesMappedFields();
         $this->getModel()->loadInfos();
@@ -66,30 +66,31 @@ class PluginDatainjectionEngine
     /**
     * Inject one line of data
     *
-    * @param $line   one line of data to import
-    * @param $index  the line number is the file
+    * @param array $line   one line of data to import
+    * @param int $index  the line number is the file
    **/
     public function injectLine($line, $index)
     {
 
-       //Store all fields to injection, sorted by itemtype
+        //Store all fields to injection, sorted by itemtype
         $fields_toinject  = [];
         $mandatory_fields = [];
 
-       //Get the injectionclass associated to the itemtype
+        //Get the injectionclass associated to the itemtype
         $itemtype       = $this->getModel()->getItemtype();
         $injectionClass = PluginDatainjectionCommonInjectionLib::getInjectionClassInstance($itemtype);
         $several        = PluginDatainjectionMapping::getSeveralMappedField($this->getModel()->fields['id']);
 
-       //First of all : transform $line which is an array of values to inject into another array
-       //which looks like this :
-       //array(itemtype=>array(field=>value,field2=>value2))
-       //Note : ignore values which are not mapped with a glpi's field
+        //First of all : transform $line which is an array of values to inject into another array
+        //which looks like this :
+        //array(itemtype=>array(field=>value,field2=>value2))
+        //Note : ignore values which are not mapped with a glpi's field
         $searchOptions = $injectionClass->getOptions($itemtype);
+        $counter = count($line);
 
-        for ($i = 0; $i < count($line); $i++) {
+        for ($i = 0; $i < $counter; $i++) {
             $mapping = $this->getModel()->getMappingByRank($i);
-           //If field is mapped with a value in glpi
+            //If field is mapped with a value in glpi
             if (
                 ($mapping != null)
                 && ($mapping->getItemtype() != PluginDatainjectionInjectionType::NO_VALUE)
@@ -98,21 +99,21 @@ class PluginDatainjectionEngine
             }
         }
 
-       //Create an array with the mandatory mappings
+        //Create an array with the mandatory mappings
         foreach ($this->getModel()->getMappings() as $mapping) {
             if ($mapping->isMandatory()) {
                 $mandatory_fields[$mapping->getItemtype()][$mapping->getValue()] = $mapping->isMandatory();
             }
         }
 
-       //Add fields needed for injection
+        //Add fields needed for injection
         $this->addRequiredFields($itemtype, $fields_toinject);
 
-       //Optional data to be added to the fields to inject (won't be checked !)
+        //Optional data to be added to the fields to inject (won't be checked !)
         $optional_data = $this->addAdditionalInformations();
 
-       //--------------- Set all needed options ------------------//
-       //Check options
+        //--------------- Set all needed options ------------------//
+        //Check options
         $checks = ['ip'           => true,
             'mac'          => true,
             'integer'      => true,
@@ -125,35 +126,36 @@ class PluginDatainjectionEngine
             'right_rw'     => true,
             'interface'    => true,
             'auth_method'  => true,
-            'port_unicity' => $this->getModel()->getPortUnicity()
+            'port_unicity' => $this->getModel()->getPortUnicity(),
         ];
 
-       //Rights options
+        //Rights options
         $rights = ['add_dropdown'              => $this->getModel()->getCanAddDropdown(),
             'overwrite_notempty_fields' => $this->getModel()->getCanOverwriteIfNotEmpty(),
+            'replace_multiline_value'   => $this->getModel()->getReplaceMultilineValue(),
             'can_add'                   => $this->model->getBehaviorAdd(),
             'can_update'                => $this->model->getBehaviorUpdate(),
-            'can_delete'                => false
+            'can_delete'                => false,
         ];
 
-       //Field format options
+        //Field format options
         $formats = ['date_format'  => $this->getModel()->getDateFormat(),
-            'float_format' => $this->getModel()->getFloatFormat()
+            'float_format' => $this->getModel()->getFloatFormat(),
         ];
 
-       //Check options : by default check all types
+        //Check options : by default check all types
         $options = ['checks'           => $checks,
             'entities_id'      => $this->getEntity(),
             'rights'           => $rights,
             'formats'          => $formats,
             'mandatory_fields' => $mandatory_fields,
-            'optional_data'    => $optional_data
+            'optional_data'    => $optional_data,
         ];
 
-       //Will manage add or update
+        //Will manage add or update
         $results = $injectionClass->addOrUpdateObject($fields_toinject, $options);
 
-       //Add injected line number to the result array
+        //Add injected line number to the result array
         $results['line'] = $index;
         if ($results['status'] != PluginDatainjectionCommonInjectionLib::SUCCESS) {
             $this->error_lines[] = $line;
@@ -165,8 +167,8 @@ class PluginDatainjectionEngine
     /**
      * Add fields needed for injection
      *
-     * @param $itemtype                    the itemtype to inject
-     * @param $fields_toinject    array    the list of fields representing the object
+     * @param string $itemtype                    the itemtype to inject
+     * @param array $fields_toinject    array    the list of fields representing the object
      *
      * @return void nothing
      */
@@ -198,15 +200,15 @@ class PluginDatainjectionEngine
         $several = []
     ): void {
 
-       // Option will be found only for "main" type.
+        // Option will be found only for "main" type.
         $option       = PluginDatainjectionCommonInjectionLib::findSearchOption(
             $searchOptions,
-            $mapping->getValue()
+            $mapping->getValue(),
         );
         $return_value = $value;
 
         if (
-            $option !== false && ($option['displaytype'] == 'multiline_text')
+            !empty($option) && ($option['displaytype'] == 'multiline_text')
             && in_array($mapping->getValue(), $several)
             && ($value != PluginDatainjectionCommonInjectionLib::EMPTY_VALUE)
         ) {
@@ -224,7 +226,7 @@ class PluginDatainjectionEngine
     /**
     * Add additonal informations, as selected by the user which performs the CSV file import
     *
-    * @return additional informations to inject
+    * @return array additional informations to inject
    **/
     public function addAdditionalInformations()
     {

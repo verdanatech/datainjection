@@ -28,16 +28,14 @@
  * -------------------------------------------------------------------------
  */
 
-if (!defined('GLPI_ROOT')) {
-    die("Sorry. You can't access directly to this file");
-}
+
 
 class PluginDatainjectionNetworkNameInjection extends NetworkName implements PluginDatainjectionInjectionInterface
 {
     public static function getTable($classname = null)
     {
 
-        $parenttype = get_parent_class(__CLASS__);
+        $parenttype = get_parent_class(self::class);
         return $parenttype::getTable();
     }
 
@@ -53,7 +51,13 @@ class PluginDatainjectionNetworkNameInjection extends NetworkName implements Plu
     {
         /** @var array $CFG_GLPI */
         global $CFG_GLPI;
+
         return $CFG_GLPI["networkport_types"];
+    }
+
+    public function isNullable($field)
+    {
+        return true; // By default, all fields can be null
     }
 
 
@@ -65,12 +69,15 @@ class PluginDatainjectionNetworkNameInjection extends NetworkName implements Plu
 
         $tab           = Search::getOptions(get_parent_class($this));
 
-       //Remove some options because some fields cannot be imported
+        //Remove some options because some fields cannot be imported
         $blacklist     = PluginDatainjectionCommonInjectionLib::getBlacklistedOptions(get_parent_class($this));
         $notimportable = [20, 21];
 
         $options['ignore_fields'] = array_merge($blacklist, $notimportable);
-        $options['displaytype']   = ["dropdown" => [12]];
+        $options['displaytype']   = [
+            "dropdown" => [12],
+            "text"     => [13],
+        ];
 
         return PluginDatainjectionCommonInjectionLib::addToSearchOptions($tab, $options, $this);
     }
@@ -89,8 +96,8 @@ class PluginDatainjectionNetworkNameInjection extends NetworkName implements Plu
 
 
     /**
-    * @param $primary_type
-    * @param $values
+    * @param string $primary_type
+    * @param array $values
    **/
     public function addSpecificNeededFields($primary_type, $values)
     {
@@ -103,35 +110,31 @@ class PluginDatainjectionNetworkNameInjection extends NetworkName implements Plu
 
 
     /**
-    * @param $values
-    * @param $add                   (true by default)
-    * @param $rights    array
+    * @param array $values
+    * @param boolean $add                   (true by default)
+    * @param array|null $rights    array
     */
     public function processAfterInsertOrUpdate($values, $add = true, $rights = [])
     {
         /** @var DBmysql $DB */
         global $DB;
 
-       //Manage ip adresses
-        if (isset($values['NetworkName']['ipaddresses_id'])) {
-            if (
-                !countElementsInTable(
-                    "glpi_ipaddresses",
-                    [
-                        'items_id' => $values['NetworkName']['id'],
-                        'itemtype' => 'NetworkName',
-                        'name'     => $values['NetworkName']['ipaddresses_id'],
-                    ]
-                )
-            ) {
-                $ip                  = new IPAddress($values['NetworkName']['ipaddresses_id']);
-                $tmp['items_id']     = $values['NetworkName']['id'];
-                $tmp['itemtype']     = "NetworkName";
-                $tmp['name']         =  $ip->getTextual();
-                $tmp['is_dynamic']   = 0;
-                if (!$ip->getFromDBByCrit($tmp)) {
-                    $ip->add($tmp);
-                }
+        //Manage ip adresses
+        if (isset($values['NetworkName']['ipaddresses_id']) && !countElementsInTable(
+            "glpi_ipaddresses",
+            [
+                'items_id' => $values['NetworkName']['id'],
+                'itemtype' => 'NetworkName',
+                'name'     => $values['NetworkName']['ipaddresses_id'],
+            ],
+        )) {
+            $ip                  = new IPAddress($values['NetworkName']['ipaddresses_id']);
+            $tmp['items_id']     = $values['NetworkName']['id'];
+            $tmp['itemtype']     = "NetworkName";
+            $tmp['name']         =  $ip->getTextual();
+            $tmp['is_dynamic']   = 0;
+            if (!$ip->getFromDBByCrit($tmp)) {
+                $ip->add($tmp);
             }
         }
     }

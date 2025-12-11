@@ -28,16 +28,14 @@
  * -------------------------------------------------------------------------
  */
 
-if (!defined('GLPI_ROOT')) {
-    die("Sorry. You can't access directly to this file");
-}
+
 
 class PluginDatainjectionSoftwareVersionInjection extends SoftwareVersion implements PluginDatainjectionInjectionInterface
 {
     public static function getTable($classname = null)
     {
 
-        $parenttype = get_parent_class(__CLASS__);
+        $parenttype = get_parent_class(self::class);
         return $parenttype::getTable();
     }
 
@@ -55,6 +53,11 @@ class PluginDatainjectionSoftwareVersionInjection extends SoftwareVersion implem
         return ['Software'];
     }
 
+    public function isNullable($field)
+    {
+        return true; // By default, all fields can be null
+    }
+
 
     /**
     * @see plugins/datainjection/inc/PluginDatainjectionInjectionInterface::getOptions()
@@ -65,7 +68,7 @@ class PluginDatainjectionSoftwareVersionInjection extends SoftwareVersion implem
         $tab = Search::getOptions(get_parent_class($this));
 
         if ($primary_type == 'SoftwareVersion') {
-            $tab[100]['name']        = _n('Software', 'Software', 1);
+            $tab[100]['name']        = _sn('Software', 'Software', 1);
             $tab[100]['field']       = 'name';
             $tab[100]['table']       = getTableForItemType('Software');
             $tab[100]['linkfield']   = 'softwares_id';
@@ -74,7 +77,7 @@ class PluginDatainjectionSoftwareVersionInjection extends SoftwareVersion implem
             $tab[100]['injectable']  = true;
         }
 
-       //Remove some options because some fields cannot be imported
+        //Remove some options because some fields cannot be imported
         $blacklist     = PluginDatainjectionCommonInjectionLib::getBlacklistedOptions(get_parent_class($this));
         $notimportable = [];
 
@@ -85,7 +88,7 @@ class PluginDatainjectionSoftwareVersionInjection extends SoftwareVersion implem
 
         $options['displaytype']   = ["dropdown"       => [4,31],
             "multiline_text" => [16],
-            "software" => [100]
+            "software" => [100],
         ];
 
         return PluginDatainjectionCommonInjectionLib::addToSearchOptions($tab, $options, $this);
@@ -93,8 +96,8 @@ class PluginDatainjectionSoftwareVersionInjection extends SoftwareVersion implem
 
 
     /**
-    * @param $info      array
-    * @param $option    array
+    * @param array $info      array
+    * @param array $option    array
    **/
     public function showAdditionalInformation($info = [], $option = [])
     {
@@ -105,8 +108,8 @@ class PluginDatainjectionSoftwareVersionInjection extends SoftwareVersion implem
                 Computer::dropdown(
                     ['name'        => $name,
                         'entity'      => $_SESSION['glpiactive_entity'],
-                        'entity_sons' => false
-                    ]
+                        'entity_sons' => false,
+                    ],
                 );
                 break;
 
@@ -114,8 +117,8 @@ class PluginDatainjectionSoftwareVersionInjection extends SoftwareVersion implem
                 Software::dropdown(
                     ['name'        => $name,
                         'entity'      => $_SESSION['glpiactive_entity'],
-                        'entity_sons' => false
-                    ]
+                        'entity_sons' => false,
+                    ],
                 );
                 break;
 
@@ -138,7 +141,7 @@ class PluginDatainjectionSoftwareVersionInjection extends SoftwareVersion implem
 
 
     /**
-    * @param $fields_toinject    array
+    * @param array $fields_toinject    array
    **/
     public function getValueForAdditionalMandatoryFields($fields_toinject = [])
     {
@@ -157,10 +160,9 @@ class PluginDatainjectionSoftwareVersionInjection extends SoftwareVersion implem
                         "glpi_softwares",
                         "entities_id",
                         $fields_toinject['SoftwareVersion']['entities_id'],
-                        true
+                        true,
                     );
-        /** @phpstan-ignore-next-line */
-        $result = $DB->query($query); // phpcs:ignore
+        $result = $DB->doQuery($query);
 
         if ($DB->numrows($result) > 0) {
             $id = $DB->result($result, 0, 'id');
@@ -176,8 +178,8 @@ class PluginDatainjectionSoftwareVersionInjection extends SoftwareVersion implem
 
 
     /**
-    * @param $primary_type
-    * @param $values
+    * @param string $primary_type
+    * @param array $values
    **/
     public function addSpecificNeededFields($primary_type, $values)
     {
@@ -191,8 +193,8 @@ class PluginDatainjectionSoftwareVersionInjection extends SoftwareVersion implem
 
 
     /**
-    * @param $fields_toinject    array
-    * @param $options            array
+    * @param array $fields_toinject    array
+    * @param array $options            array
    **/
     public function checkPresent($fields_toinject = [], $options = [])
     {

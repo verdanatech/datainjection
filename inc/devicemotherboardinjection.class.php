@@ -28,16 +28,14 @@
  * -------------------------------------------------------------------------
  */
 
-if (!defined('GLPI_ROOT')) {
-    die("Sorry. You can't access directly to this file");
-}
+use Glpi\Exception\Http\HttpException;
 
 class PluginDatainjectionDeviceMotherboardInjection extends DeviceMotherboard implements PluginDatainjectionInjectionInterface
 {
     public static function getTable($classname = null)
     {
 
-        $parenttype = get_parent_class(__CLASS__);
+        $parenttype = get_parent_class(self::class);
         return $parenttype::getTable();
     }
 
@@ -51,8 +49,15 @@ class PluginDatainjectionDeviceMotherboardInjection extends DeviceMotherboard im
 
     public function connectedTo()
     {
+        /** @var array $CFG_GLPI */
+        global $CFG_GLPI;
 
-        return ["Computer"];
+        return $CFG_GLPI['itemdevicemotherboard_types'];
+    }
+
+    public function isNullable($field)
+    {
+        return true; // By default, all fields can be null
     }
 
 
@@ -64,13 +69,13 @@ class PluginDatainjectionDeviceMotherboardInjection extends DeviceMotherboard im
 
         $tab           = Search::getOptions(get_parent_class($this));
 
-       //Remove some options because some fields cannot be imported
+        //Remove some options because some fields cannot be imported
         $blacklist     = PluginDatainjectionCommonInjectionLib::getBlacklistedOptions(get_parent_class($this));
         $notimportable = [];
 
         $options['ignore_fields'] = array_merge($blacklist, $notimportable);
         $options['displaytype']   = ["multiline_text" => [16],
-            "dropdown"       => [23]
+            "dropdown"       => [23],
         ];
 
         return PluginDatainjectionCommonInjectionLib::addToSearchOptions($tab, $options, $this);
@@ -78,15 +83,18 @@ class PluginDatainjectionDeviceMotherboardInjection extends DeviceMotherboard im
 
 
     /**
-    * @param $values
-    * @param $add                (true by default)
-    * @param $rights    array
+    * @param array $values
+    * @param boolean $add                (true by default)
+    * @param array|null $rights    array
     */
     public function processAfterInsertOrUpdate($values, $add = true, $rights = [])
     {
 
         if (isset($values['Computer']['id'])) {
             $class   = "Item_" . get_parent_class($this);
+            if (!is_a($class, CommonDBTM::class, true)) {
+                throw new HttpException(500, 'Class ' . $class . ' is not a valid class');
+            }
             $item    = new $class();
             $foreign = getForeignKeyFieldForTable(getTableForItemType(get_parent_class($this)));
 
@@ -97,7 +105,7 @@ class PluginDatainjectionDeviceMotherboardInjection extends DeviceMotherboard im
                         $foreign   => $values[get_parent_class($this)]['id'],
                         'itemtype' => 'Computer',
                         'items_id' => $values['Computer']['id'],
-                    ]
+                    ],
                 )
             ) {
                 $tmp[$foreign]   = $values[get_parent_class($this)]['id'];

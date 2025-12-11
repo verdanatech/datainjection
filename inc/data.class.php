@@ -33,15 +33,11 @@ class PluginDatainjectionData
     private $injectionData;
 
 
-    public function __construct()
-    {
-
-        $injectionData = [];
-    }
+    public function __construct() {}
 
 
     /**
-    * @param $newData
+    * @param array $newData
    **/
     public function addToData($newData)
     {
@@ -58,7 +54,7 @@ class PluginDatainjectionData
 
 
     /**
-    * @param $line_id
+    * @param integer $line_id
    **/
     public function getDataAtLine($line_id)
     {

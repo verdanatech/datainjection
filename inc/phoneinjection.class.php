@@ -28,16 +28,14 @@
  * -------------------------------------------------------------------------
  */
 
-if (!defined('GLPI_ROOT')) {
-    die("Sorry. You can't access directly to this file");
-}
+
 
 class PluginDatainjectionPhoneInjection extends Phone implements PluginDatainjectionInjectionInterface
 {
     public static function getTable($classname = null)
     {
 
-        $parenttype = get_parent_class(__CLASS__);
+        $parenttype = get_parent_class(self::class);
         return $parenttype::getTable();
     }
 
@@ -55,6 +53,11 @@ class PluginDatainjectionPhoneInjection extends Phone implements PluginDatainjec
         return ['Computer', 'Document'];
     }
 
+    public function isNullable($field)
+    {
+        return true; // By default, all fields can be null
+    }
+
 
     /**
     * @see plugins/datainjection/inc/PluginDatainjectionInjectionInterface::getOptions()
@@ -64,10 +67,10 @@ class PluginDatainjectionPhoneInjection extends Phone implements PluginDatainjec
 
         $tab           = Search::getOptions(get_parent_class($this));
 
-       //specific for domain
-        $tab[205]['name'] = __('Domain name', 'datainjection');
+        //specific for domain
+        $tab[205]['name'] = __s('Domain name', 'datainjection');
 
-       //Remove some options because some fields cannot be imported
+        //Remove some options because some fields cannot be imported
         $blacklist     = PluginDatainjectionCommonInjectionLib::getBlacklistedOptions(get_parent_class($this));
         $notimportable = [91, 92, 93];
 
@@ -76,7 +79,7 @@ class PluginDatainjectionPhoneInjection extends Phone implements PluginDatainjec
         $options['displaytype']   = ["dropdown"       => [3, 4, 23, 31, 40, 42, 49, 71],
             "user"           => [24, 70],
             "bool"           => [43, 44, 82],
-            "multiline_text" => [16, 90]
+            "multiline_text" => [16, 90],
         ];
 
         return PluginDatainjectionCommonInjectionLib::addToSearchOptions($tab, $options, $this);
@@ -96,19 +99,15 @@ class PluginDatainjectionPhoneInjection extends Phone implements PluginDatainjec
 
 
     /**
-    * @param $primary_type
-    * @param $values
+    * @param string $primary_type
+    * @param array $values
    **/
     public function addSpecificNeededFields($primary_type, $values)
     {
 
         $fields = [];
         if (isset($values[$primary_type]['is_global'])) {
-            if (empty($values[$primary_type]['is_global'])) {
-                $fields['is_global'] = 0;
-            } else {
-                $fields['is_global'] = $values[$primary_type]['is_global'];
-            }
+            $fields['is_global'] = empty($values[$primary_type]['is_global']) ? 0 : $values[$primary_type]['is_global'];
         }
         return $fields;
     }

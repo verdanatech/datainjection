@@ -28,16 +28,14 @@
  * -------------------------------------------------------------------------
  */
 
-if (!defined('GLPI_ROOT')) {
-    die("Sorry. You can't access directly to this file");
-}
+
 
 class PluginDatainjectionContractInjection extends Contract implements PluginDatainjectionInjectionInterface
 {
     public static function getTable($classname = null)
     {
 
-        $parenttype = get_parent_class(__CLASS__);
+        $parenttype = get_parent_class(self::class);
         return $parenttype::getTable();
     }
 
@@ -55,6 +53,11 @@ class PluginDatainjectionContractInjection extends Contract implements PluginDat
         return [];
     }
 
+    public function isNullable($field)
+    {
+        return true; // By default, all fields can be null
+    }
+
 
     /**
     * @see plugins/datainjection/inc/PluginDatainjectionInjectionInterface::getOptions()
@@ -64,7 +67,7 @@ class PluginDatainjectionContractInjection extends Contract implements PluginDat
 
         $tab                       = Search::getOptions(get_parent_class($this));
 
-       //Specific to location
+        //Specific to location
         $tab[5]['checktype']       = 'date';
 
         $tab[6]['minvalue']        = 0;
@@ -83,13 +86,13 @@ class PluginDatainjectionContractInjection extends Contract implements PluginDat
 
         $tab[22]['linkfield']      = 'billing';
 
-       // Associated suppliers
+        // Associated suppliers
         $tab[29]['linkfield']      = 'suppliers_id';
         $tab[29]['displaytype']    = 'relation';
         $tab[29]['relationclass']  = 'Contract_Supplier';
         $tab[29]['relationfield']  = $tab[29]['linkfield'];
 
-       //Remove some options because some fields cannot be imported
+        //Remove some options because some fields cannot be imported
         $blacklist     = PluginDatainjectionCommonInjectionLib::getBlacklistedOptions(get_parent_class($this));
         $notimportable = [12, 13, 20, 41, 42, 43, 44, 45, 72];
 
@@ -102,7 +105,7 @@ class PluginDatainjectionContractInjection extends Contract implements PluginDat
             "alert"            => [59],
             "billing"          => [22],
             "renewal"          => [23],
-            "multiline_text"   => [16 ,90]
+            "multiline_text"   => [16 ,90],
         ];
 
         return PluginDatainjectionCommonInjectionLib::addToSearchOptions($tab, $options, $this);
@@ -122,8 +125,8 @@ class PluginDatainjectionContractInjection extends Contract implements PluginDat
 
 
     /**
-    * @param $info      array
-    * @param $option    array
+    * @param array $info      array
+    * @param array $option    array
    **/
     public function showAdditionalInformation($info = [], $option = [])
     {
@@ -147,39 +150,39 @@ class PluginDatainjectionContractInjection extends Contract implements PluginDat
                     'step'  => 12,
                     'toadd' => [0 => Dropdown::EMPTY_VALUE,
                         1 => sprintf(
-                            _n(
+                            _sn(
                                 '%d month',
                                 '%d months',
-                                1
+                                1,
                             ),
-                            1
+                            1,
                         ),
                         2 => sprintf(
-                            _n(
+                            _sn(
                                 '%d month',
                                 '%d months',
-                                2
+                                2,
                             ),
-                            2
+                            2,
                         ),
                         3 => sprintf(
-                            _n(
+                            _sn(
                                 '%d month',
                                 '%d months',
-                                3
+                                3,
                             ),
-                            3
+                            3,
                         ),
                         6 => sprintf(
-                            _n(
+                            _sn(
                                 '%d month',
                                 '%d months',
-                                6
+                                6,
                             ),
-                            6
-                        )
+                            6,
+                        ),
                     ],
-                    'unit' => 'month'
+                    'unit' => 'month',
                 ]);
                 break;
 

@@ -28,14 +28,18 @@
  * -------------------------------------------------------------------------
  */
 
+use function Safe\file_get_contents;
+use function Safe\file_put_contents;
+use function Safe\unlink;
+
 class PluginDatainjectionSession
 {
     /**
     * Get a parameter from the HTTP session
     *
-    * @param $param  the parameter to get
+    * @param string $param  the parameter to get
     *
-    * @return the param's value
+    * @return mixed the param's value
    **/
     public static function getParam($param)
     {
@@ -54,8 +58,8 @@ class PluginDatainjectionSession
     /**
     * Set a parameter in the HTTP session
     *
-    * @param $param     the parameter
-    * @param $results   the value to store
+    * @param string $param     the parameter
+    * @param array|string|false $results   the value to store
     *
     * @return void
    **/

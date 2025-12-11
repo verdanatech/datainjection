@@ -28,16 +28,14 @@
  * -------------------------------------------------------------------------
  */
 
-if (!defined('GLPI_ROOT')) {
-    die("Sorry. You can't access directly to this file");
-}
+
 
 class PluginDatainjectionAutoUpdateSystemInjection extends AutoUpdateSystem implements PluginDatainjectionInjectionInterface
 {
     public static function getTable($classname = null)
     {
 
-        $parenttype = get_parent_class(__CLASS__);
+        $parenttype = get_parent_class(self::class);
         return $parenttype::getTable();
     }
 
@@ -55,13 +53,18 @@ class PluginDatainjectionAutoUpdateSystemInjection extends AutoUpdateSystem impl
         return [];
     }
 
+    public function isNullable($field)
+    {
+        return true; // By default, all fields can be null
+    }
+
 
     public function getOptions($primary_type = '')
     {
 
         $tab       = Search::getOptions(get_parent_class($this));
 
-       //Remove some options because some fields cannot be imported
+        //Remove some options because some fields cannot be imported
         $blacklist = PluginDatainjectionCommonInjectionLib::getBlacklistedOptions(get_parent_class($this));
         $notimportable            = [];
         $options['ignore_fields'] = array_merge($blacklist, $notimportable);
@@ -75,10 +78,10 @@ class PluginDatainjectionAutoUpdateSystemInjection extends AutoUpdateSystem impl
     /**
     * Standard method to add an object into glpi
     *
-    * @param $values  array fields to add into glpi
-    * @param $options array options used during creation
+    * @param array $values  array fields to add into glpi
+    * @param array $options array options used during creation
     *
-    * @return an array of IDs of newly created objects : for example array(Computer=>1, Networkport=>10)
+    * @return array of IDs of newly created objects : for example array(Computer=>1, Networkport=>10)
    **/
     public function addOrUpdateObject($values = [], $options = [])
     {

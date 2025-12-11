@@ -28,16 +28,14 @@
  * -------------------------------------------------------------------------
  */
 
-if (!defined('GLPI_ROOT')) {
-    die("Sorry. You can't access directly to this file");
-}
+
 
 class PluginDatainjectionDocumentInjection extends Document implements PluginDatainjectionInjectionInterface
 {
     public static function getTable($classname = null)
     {
 
-        $parenttype = get_parent_class(__CLASS__);
+        $parenttype = get_parent_class(self::class);
         return $parenttype::getTable();
     }
 
@@ -53,6 +51,11 @@ class PluginDatainjectionDocumentInjection extends Document implements PluginDat
     {
 
         return [];
+    }
+
+    public function isNullable($field)
+    {
+        return true; // By default, all fields can be null
     }
 
 

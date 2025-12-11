@@ -27,8 +27,10 @@
  * @link      https://github.com/pluginsGLPI/datainjection
  * -------------------------------------------------------------------------
  */
+use Glpi\Exception\Http\HttpException;
 
-use Glpi\Toolbox\Sanitizer;
+use function Safe\preg_match;
+use function Safe\preg_replace;
 
 class PluginDatainjectionCommonInjectionLib
 {
@@ -40,9 +42,6 @@ class PluginDatainjectionCommonInjectionLib
 
     //Fields mandatory for injection
     private $mandatory_fields = [];
-
-    //List of fields which can agregate more than one value (type multiline_text)
-    private $severalvalues_fields = [];
 
     private $optional_infos = [];
 
@@ -64,56 +63,56 @@ class PluginDatainjectionCommonInjectionLib
     //Entity in which data will be inserted
     private $entity = 0;
 
-    const ACTION_CHECK  = 0;
+    public const ACTION_CHECK  = 0;
 
     //Type of action to perform
-    const IMPORT_ADD    = 0;
-    const IMPORT_UPDATE = 1;
-    const IMPORT_DELETE = 2;
+    public const IMPORT_ADD    = 0;
+    public const IMPORT_UPDATE = 1;
+    public const IMPORT_DELETE = 2;
 
 
     //Action return constants
-    const SUCCESS                        = 10; //Injection OK
-    const FAILED                         = 11; //Error during injection
-    const WARNING                        = 12; //Injection ok but partial
+    public const SUCCESS                        = 10; //Injection OK
+    public const FAILED                         = 11; //Error during injection
+    public const WARNING                        = 12; //Injection ok but partial
 
     //Field check return constants
-    const TYPE_MISMATCH                  = 22;
-    const MANDATORY                      = 23;
-    const ITEM_NOT_FOUND                 = 24;
+    public const TYPE_MISMATCH                  = 22;
+    public const MANDATORY                      = 23;
+    public const ITEM_NOT_FOUND                 = 24;
 
     //Injection Message
-    const ERROR_CANNOT_IMPORT              = 31;
-    const ERROR_CANNOT_UPDATE              = 32;
-    const WARNING_NOTFOUND                 = 33;
-    const ERROR_FIELDSIZE_EXCEEDED         = 37;
-    const ERROR_IMPORT_REFUSED             = 39; //Dictionnary explicitly refuse import
+    public const ERROR_CANNOT_IMPORT              = 31;
+    public const ERROR_CANNOT_UPDATE              = 32;
+    public const WARNING_NOTFOUND                 = 33;
+    public const ERROR_FIELDSIZE_EXCEEDED         = 37;
+    public const ERROR_IMPORT_REFUSED             = 39; //Dictionnary explicitly refuse import
 
     //Empty values
-    const EMPTY_VALUE          = '';
-    const DROPDOWN_EMPTY_VALUE = 0;
+    public const EMPTY_VALUE          = '';
+    public const DROPDOWN_EMPTY_VALUE = 0;
 
     //Format constants
-    const FLOAT_TYPE_COMMA        = 0; //xxxx,xx
-    const FLOAT_TYPE_DOT          = 1; //xxxx.xx
-    const FLOAT_TYPE_DOT_AND_COM  = 2; //xx,xxx.xx
+    public const FLOAT_TYPE_COMMA        = 0; //xxxx,xx
+    public const FLOAT_TYPE_DOT          = 1; //xxxx.xx
+    public const FLOAT_TYPE_DOT_AND_COM  = 2; //xx,xxx.xx
 
     //Date management constants
-    const DATE_TYPE_DDMMYYYY   = "dd-mm-yyyy";
-    const DATE_TYPE_MMDDYYYY   = "mm-dd-yyyy";
-    const DATE_TYPE_YYYYMMDD   = "yyyy-mm-dd";
+    public const DATE_TYPE_DDMMYYYY   = "dd-mm-yyyy";
+    public const DATE_TYPE_MMDDYYYY   = "mm-dd-yyyy";
+    public const DATE_TYPE_YYYYMMDD   = "yyyy-mm-dd";
 
     //Port unicity constants
-    const UNICITY_NETPORT_LOGICAL_NUMBER            = 0;
-    const UNICITY_NETPORT_NAME                      = 1;
-    const UNICITY_NETPORT_MACADDRESS                = 2;
-    const UNICITY_NETPORT_LOGICAL_NUMBER_NAME       = 3;
-    const UNICITY_NETPORT_LOGICAL_NUMBER_MAC        = 4;
-    const UNICITY_NETPORT_LOGICAL_NUMBER_NAME_MAC   = 5;
+    public const UNICITY_NETPORT_LOGICAL_NUMBER            = 0;
+    public const UNICITY_NETPORT_NAME                      = 1;
+    public const UNICITY_NETPORT_MACADDRESS                = 2;
+    public const UNICITY_NETPORT_LOGICAL_NUMBER_NAME       = 3;
+    public const UNICITY_NETPORT_LOGICAL_NUMBER_MAC        = 4;
+    public const UNICITY_NETPORT_LOGICAL_NUMBER_NAME_MAC   = 5;
 
     //Field status must evolve when ticket #2216 will be resolved
-    const FIELD_INJECTABLE     = 1;
-    const FIELD_VIRTUAL        = 2;
+    public const FIELD_INJECTABLE     = 1;
+    public const FIELD_VIRTUAL        = 2;
 
 
 
@@ -131,20 +130,21 @@ class PluginDatainjectionCommonInjectionLib
             'float'        => false, 'string'       => false,
             'right_r'      => false, 'right_rw'     => false,
             'interface'    => false, 'auth_method'  => false,
-            'port_unicity' => false
+            'port_unicity' => false,
         ];
 
-       //Rights options
+        //Rights options
         $this->rights = ['add_dropdown'              => false,
             'overwrite_notempty_fields' => false,
             'can_add'                   => false,
             'can_update'                => false,
-            'can_delete'                => false
+            'can_delete'                => false,
+            'replace_multiline_value'   => false,
         ];
 
-       //Field format options
+        //Field format options
         $this->formats = ['date_format'  => self::DATE_TYPE_YYYYMMDD,
-            'float_format' => self::FLOAT_TYPE_COMMA
+            'float_format' => self::FLOAT_TYPE_COMMA,
         ];
     }
 
@@ -152,13 +152,13 @@ class PluginDatainjectionCommonInjectionLib
     /**
     * Constructor : store all needed options into the library
     *
-    * @param $injectionClass            class which represents the itemtype to injection
+    * @param PluginDatainjectionInjectionInterface $injectionClass            class which represents the itemtype to injection
     *                                   (in 0.80, will be directly the itemtype class)
-    * @param $values              array values to injection into GLPI
-    * @param $injection_options   array options that can be used during the injection
+    * @param array|null $values              array values to injection into GLPI
+    * @param array|null $injection_options   array options that can be used during the injection
     *                                   (maybe an empty array)
     *
-    * @return nothinActiong
+    * @return void nothing
    **/
     public function __construct($injectionClass, $values = [], $injection_options = [])
     {
@@ -190,28 +190,24 @@ class PluginDatainjectionCommonInjectionLib
             $this->optional_infos = $injection_options['optional_data'];
         }
 
-       //Split $injection_options array and store data into the rights internal arrays
+        //Split $injection_options array and store data into the rights internal arrays
         if (isset($injection_options['formats'])) {
             $this->formats = $injection_options['formats'];
         } else {
             $this->formats = ['date_format'  => self::DATE_TYPE_YYYYMMDD,
-                'float_format' => self::FLOAT_TYPE_DOT
+                'float_format' => self::FLOAT_TYPE_DOT,
             ];
         }
 
-       //Store values to inject
+        //Store values to inject
         $this->values = $values;
 
-       //Store injectClass & primary_type
+        //Store injectClass & primary_type
         $this->injectionClass = $injectionClass;
         $this->primary_type   = self::getItemtypeByInjectionClass($injectionClass);
 
-       //If entity is given stores it, then use root entity
-        if (isset($injection_options['entities_id'])) {
-            $this->entity = $injection_options['entities_id'];
-        } else {
-            $this->entity = 0;
-        }
+        //If entity is given stores it, then use root entity
+        $this->entity = $injection_options['entities_id'] ?? 0;
     }
 
 
@@ -219,19 +215,19 @@ class PluginDatainjectionCommonInjectionLib
     * Check and add fields for itemtype which depend on other itemtypes
     * (for example SoftwareLicense needs to be linked to a Software)
     *
-    * @param $injectionClass class to use for injection
+    * @param PluginDatainjectionInjectionInterface $injectionClass class to use for injection
    **/
     public function areTypeMandatoryFieldsOK($injectionClass)
     {
 
         $itemtype = self::getItemtypeByInjectionClass($injectionClass);
 
-       //Add more values needed for mandatory fields management
+        //Add more values needed for mandatory fields management
         if (method_exists($injectionClass, 'getValueForAdditionalMandatoryFields')) {
             $this->values = $injectionClass->getValueForAdditionalMandatoryFields($this->values);
         }
 
-       //Add new mandatory fields to check, needed by other itemtypes to inject
+        //Add new mandatory fields to check, needed by other itemtypes to inject
         if (method_exists($injectionClass, 'addSpecificMandatoryFields')) {
             $fields = $injectionClass->addSpecificMandatoryFields();
             foreach ($fields as $key => $value) {
@@ -242,17 +238,17 @@ class PluginDatainjectionCommonInjectionLib
         $status_check = true;
         if (count($this->mandatory_fields[$itemtype]) > 0) {
             foreach ($this->mandatory_fields[$itemtype] as $field => $value) {
-               //Get value associated with the mandatory field
+                //Get value associated with the mandatory field
                 $value = $this->getValueByItemtypeAndName($itemtype, $field);
 
-               //Get search option associated with the mandatory field
+                //Get search option associated with the mandatory field
                 $option = self::findSearchOption($injectionClass->getOptions($itemtype), $field);
 
-               //If field not defined, or if value is the dropdown's default value
-               //If no value found or value is 0 and field is a dropdown,
-               //then mandatory field management failed
+                //If field not defined, or if value is the dropdown's default value
+                //If no value found or value is 0 and field is a dropdown,
+                //then mandatory field management failed
                 if (
-                    ($value == false)
+                    ($value === false)
                     || (($value == self::DROPDOWN_EMPTY_VALUE)
                     && self::isFieldADropdown($option['displaytype']))
                 ) {
@@ -268,38 +264,38 @@ class PluginDatainjectionCommonInjectionLib
     /**
     * Check if a field type represents a dropdown or not
     *
-    * @param $field_type the type of field
+    * @param string $field_type the type of field
     *
-    * @return true if it's a dropdown type, false if not
+    * @return boolean true if it's a dropdown type, false if not
    **/
     public static function isFieldADropdown($field_type)
     {
-
-        if (
-            !in_array(
-                $field_type,
-                ['integer', 'decimal', 'tree',
-                    'text', 'multiline_text', 'date'
-                ]
-            )
-        ) {
-            return true;
-        }
-        return false;
+        return !in_array(
+            $field_type,
+            ['integer', 'decimal', 'tree',
+                'text', 'multiline_text', 'date',
+            ],
+        );
     }
 
 
     /**
     * Return an the class of an item by giving his injection class
     *
-    * @param $injectionClassName the injection class name
+    * @param string $injectionClassName the injection class name
     *
     * @return CommonDBTM instance of the itemtype associated to the injection class name
     */
     public static function getItemtypeInstanceByInjection($injectionClassName)
     {
 
+        if (!is_a($injectionClassName, PluginDatainjectionInjectionInterface::class, true)) {
+            throw new HttpException(500, 'Class ' . $injectionClassName . ' is not a valid class');
+        }
         $injection = self::getItemtypeByInjectionClass(new $injectionClassName());
+        if (!is_a($injection, CommonDBTM::class, true)) {
+            throw new HttpException(500, 'Class ' . $injection . ' is not a valid class');
+        }
         return new $injection();
     }
 
@@ -307,13 +303,15 @@ class PluginDatainjectionCommonInjectionLib
     /**
     * Get an itemtype name by giving his injection class name
     *
-    * @param $injectionClassName the injection class name
+    * @param string $injectionClassName the injection class name
     *
     * @return string the itemtype associated
     */
     public static function getItemtypeByInjection($injectionClassName)
     {
-
+        if (!is_a($injectionClassName, CommonDBTM::class, true)) {
+            throw new HttpException(500, 'Class ' . $injectionClassName . ' is not a valid class');
+        }
         return self::getItemtypeByInjectionClass(new $injectionClassName());
     }
 
@@ -321,7 +319,7 @@ class PluginDatainjectionCommonInjectionLib
     /**
     * Get an itemtype by giving an injection class object
     *
-    * @param $injectionClassName the injection class object
+    * @param object $injectionClass Name the injection class object
     *
     * @return string instance of the itemtype associated to the injection class
     */
@@ -335,9 +333,9 @@ class PluginDatainjectionCommonInjectionLib
     /**
     * Get an injection class instance for an itemtype
     *
-    * @param $itemtype  the itemtype
+    * @param string $itemtype  the itemtype
     *
-    * @return the injection class instance
+    * @return PluginDatainjectionInjectionInterface the injection class instance
     */
     public static function getInjectionClassInstance($itemtype)
     {
@@ -347,6 +345,9 @@ class PluginDatainjectionCommonInjectionLib
         } else {
             $injectionClass = ucfirst($itemtype) . 'Injection';
         }
+        if (!is_a($injectionClass, PluginDatainjectionInjectionInterface::class, true)) {
+            throw new HttpException(500, 'Class ' . $injectionClass . ' is not a valid class');
+        }
         return new $injectionClass();
     }
 
@@ -354,52 +355,63 @@ class PluginDatainjectionCommonInjectionLib
     /**
     * Add blacklisted fields for an itemtype
     *
-    * @param $itemtype the itemtype
+    * @param string $itemtype the itemtype
     *
-    * @return the array of all blacklisted fields
+    * @return array the array of all blacklisted fields
     */
     public static function getBlacklistedOptions($itemtype)
     {
         /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
-       //2 : id
-       // 19 : date_mod
-       // 80 : entity
-       // 121 : date_creation
-        $blacklist = [2, 19, 80, 121, 201, 202, 203, 204];
+        // 2 : id
+        // 19 : date_mod
+        // 80 : entity
+        // 121 : date_creation
+        // 200 : notepad
+        $blacklist = [
+            2,   // id
+            19,  // last update
+            80,  // completename
+            121, // creation date
+            200, // notepad - content
+            201, // notepad - creation date
+            202, // notepad - writer
+            203, // notepad - last update
+            204, // notepad - last updater
+        ];
 
         $raw_options_to_blacklist = [];
 
-       //add document fields
+        //add document fields
         if (in_array($itemtype, $CFG_GLPI["document_types"])) {
             $raw_options_to_blacklist = array_merge(
                 $raw_options_to_blacklist,
-                Document::rawSearchOptionsToAdd($itemtype)
+                Document::rawSearchOptionsToAdd($itemtype),
             );
         }
 
-       //add infocoms fields
+        //add infocoms fields
         if (in_array($itemtype, $CFG_GLPI["infocom_types"])) {
             $raw_options_to_blacklist = array_merge(
                 $raw_options_to_blacklist,
-                Infocom::rawSearchOptionsToAdd($itemtype)
+                Infocom::rawSearchOptionsToAdd($itemtype),
             );
         }
 
-       //add contract fields
+        //add contract fields
         if (in_array($itemtype, $CFG_GLPI["contract_types"])) {
             $raw_options_to_blacklist = array_merge(
                 $raw_options_to_blacklist,
-                Contract::rawSearchOptionsToAdd()
+                Contract::rawSearchOptionsToAdd(),
             );
         }
 
-       //add networkport fields
+        //add networkport fields
         if (in_array($itemtype, $CFG_GLPI["networkport_types"])) {
             $raw_options_to_blacklist = array_merge(
                 $raw_options_to_blacklist,
-                NetworkPort::rawSearchOptionsToAdd($itemtype)
+                NetworkPort::rawSearchOptionsToAdd($itemtype),
             );
         }
 
@@ -410,7 +422,7 @@ class PluginDatainjectionCommonInjectionLib
             $blacklist[] = $raw_option['id'];
         }
 
-       //add ticket_types fields
+        //add ticket_types fields
         if (in_array($itemtype, $CFG_GLPI["ticket_types"])) {
             $blacklist[] = 60;
             $blacklist[] = 140;
@@ -423,10 +435,10 @@ class PluginDatainjectionCommonInjectionLib
     /**
     * Find and return the right search option
     *
-    * @param $options the search options array
-    * @param $lookfor the search option we're looking for
+    * @param array $options the search options array
+    * @param string $lookfor the search option we're looking for
     *
-    * @return the search option matching lookfor parameter or false it not found
+    * @return array the search option matching lookfor parameter or false it not found
    **/
     public static function findSearchOption($options, $lookfor)
     {
@@ -452,7 +464,7 @@ class PluginDatainjectionCommonInjectionLib
     /**
     * Get date format used for injection
     *
-    * @return date format used
+    * @return string date format used
    **/
     private function getDateFormat()
     {
@@ -464,7 +476,7 @@ class PluginDatainjectionCommonInjectionLib
     /**
     * Get date format used for injection
     *
-    * @return date format used
+    * @return string date format used
    **/
     private function getFloatFormat()
     {
@@ -473,24 +485,10 @@ class PluginDatainjectionCommonInjectionLib
     }
 
 
-
     /**
     * Get itemtype associated to the injectionClass
     *
-    * @return an itemtype
-   **/
-    private function getItemtype()
-    {
-
-        $classname = get_class($this->injectionClass);
-        return self::getItemtypeByInjection($classname);
-    }
-
-
-    /**
-    * Get itemtype associated to the injectionClass
-    *
-    * @return an itemtype
+    * @return CommonDBTM an itemtype
    **/
     private function getItemInstance()
     {
@@ -503,7 +501,7 @@ class PluginDatainjectionCommonInjectionLib
     /**
     * Return injection results
     *
-    * @return an array which contains the reformat/check/injection logs
+    * @return array which contains the reformat/check/injection logs
    **/
     public function getInjectionResults()
     {
@@ -529,10 +527,10 @@ class PluginDatainjectionCommonInjectionLib
             foreach ($data as $field => $value) {
                 if (!in_array($field, $blacklisted_fields)) {
                     $searchOption = self::findSearchOption($searchOptions, $field);
-                   //searchoption relation type is already manage by manageRelations()
-                   //skip it
+                    //searchoption relation type is already manage by manageRelations()
+                    //skip it
                     if (
-                        $searchOption !== false
+                        !empty($searchOption)
                         && ((isset($searchOption['displaytype']) && $searchOption['displaytype'] != 'relation')
                         || !isset($searchOption['displaytype']))
                     ) {
@@ -541,7 +539,7 @@ class PluginDatainjectionCommonInjectionLib
                 }
             }
 
-           //TODO : This is ugly, need to find why it adds an empty value to the array
+            //TODO : This is ugly, need to find why it adds an empty value to the array
             foreach ($this->values[$itemtype] as $field => $value) {
                 if ($field == '') {
                     unset($this->values[$itemtype][$field]);
@@ -554,12 +552,12 @@ class PluginDatainjectionCommonInjectionLib
     /**
     * Get the ID associated with a value from the CSV file
     *
-    * @param $injectionClass
-    * @param $itemtype               itemtype of the values to inject
-    * @param $searchOption           option associated with the field to check
-    * @param $field                  the field to check
-    * @param $value                  the value coming from the CSV file
-    * @param $add                    is insertion (true) or update (false) (true by default)
+    * @param PluginDatainjectionInjectionInterface|null $injectionClass
+    * @param string $itemtype               itemtype of the values to inject
+    * @param array $searchOption           option associated with the field to check
+    * @param string $field                  the field to check
+    * @param string $value                  the value coming from the CSV file
+    * @param boolean $add                    is insertion (true) or update (false) (true by default)
     *
     * @return void nothing
    **/
@@ -571,11 +569,7 @@ class PluginDatainjectionCommonInjectionLib
         $value,
         $add = true
     ) {
-        if (isset($searchOption['storevaluein'])) {
-            $linkfield = $searchOption['storevaluein'];
-        } else {
-            $linkfield = $searchOption['linkfield'];
-        }
+        $linkfield = $searchOption['storevaluein'] ?? $searchOption['linkfield'];
 
         switch ($searchOption['displaytype']) {
             case 'tree':
@@ -588,8 +582,8 @@ class PluginDatainjectionCommonInjectionLib
                 break;
 
             case 'password':
-               //To add a user password, it's mandatory is give a password and it's confirmation
-               //Here we cannot detect if it's an add or update. We'll handle updates later in the process
+                //To add a user password, it's mandatory is give a password and it's confirmation
+                //Here we cannot detect if it's an add or update. We'll handle updates later in the process
                 if ($add && $itemtype == 'User') {
                     $this->setValueForItemtype($itemtype, $linkfield, $value);
                     //Add field password2 is not already present
@@ -603,15 +597,19 @@ class PluginDatainjectionCommonInjectionLib
             case 'dropdown':
             case 'relation':
                 $tmptype = getItemTypeForTable($searchOption['table']);
+                if (!is_a($tmptype, CommonDBTM::class, true)) {
+                    return;
+                }
                 $item    = new $tmptype();
                 if ($item instanceof CommonTreeDropdown) {
-                   // use findID instead of getID
+                    // use findID instead of getID
                     $input =  [
                         'completename' => $value,
-                        'entities_id'  => $this->entity
+                        'entities_id'  => $this->entity,
                     ];
 
-                    if ($item->getType() == 'Entity') { // Blocks entity creation. The findID method only searches for direct sub-entities of the root, not deeper levels.
+                    if ($item->getType() == 'Entity') {
+                        // Blocks entity creation. The findID method only searches for direct sub-entities of the root, not deeper levels.
                         $crit = 'name';
                         if (strpos($input['completename'], '>')) {
                             $crit = 'completename';
@@ -620,22 +618,20 @@ class PluginDatainjectionCommonInjectionLib
                         $result = $entity->getFromDBByCrit(
                             [
                                 $crit => $input['completename'],
-                                'entities_id' => $input['entities_id']
-                            ]
+                                'entities_id' => $input['entities_id'],
+                            ],
                         );
-
                         if ($result !== false) {
                             $input['entities_id'] = $entity->fields['id'];
                         }
-
                         $sons = getSonsOf('glpi_entities', $input['entities_id']);
                         if ($result === false && !empty($sons)) {
                             foreach ($sons as $son_id) {
                                 $result = $entity->getFromDBByCrit(
                                     [
                                         $crit => $input['completename'],
-                                        'entities_id' => $son_id
-                                    ]
+                                        'entities_id' => $son_id,
+                                    ],
                                 );
                                 if ($result !== false) {
                                     $input['entities_id'] = $entity->fields['id'];
@@ -643,39 +639,31 @@ class PluginDatainjectionCommonInjectionLib
                                 }
                             }
                         }
-
                         $id = $input['entities_id'];
+                    } elseif ($item->canCreate() && $this->rights['add_dropdown']) {
+                        $id = $item->import($input);
                     } else {
-                        if ($item->canCreate() && $this->rights['add_dropdown']) {
-                            $id = $item->import($input);
-                        } else {
-                            $id = $item->findID($input);
-                        }
+                        $id = $item->findID($input);
                     }
-                } else if ($item instanceof CommonDropdown) {
-                    if ($item->canCreate() && $this->rights['add_dropdown']) {
-                        $canadd = true;
-                    } else {
-                        $canadd = false;
-                    }
-
+                } elseif ($item instanceof CommonDropdown) {
+                    $canadd = $item->canCreate() && $this->rights['add_dropdown'];
                     $id = $item->importExternal(
                         $value,
                         $this->entity,
                         $this->addExternalDropdownParameters($itemtype),
                         '',
-                        $canadd
+                        $canadd,
                     );
                 } else {
                     $id = self::findSingle($item, $searchOption, $this->entity, $value);
                 }
-               // Use EMPTY_VALUE for Mandatory field check
+                // Use EMPTY_VALUE for Mandatory field check
                 $this->setValueForItemtype($itemtype, $linkfield, ($id > 0 ? $id : self::EMPTY_VALUE));
                 if ($value && $id <= 0) {
                     $this->results['status']                     = self::WARNING;
                     $this->results[self::ACTION_CHECK]['status'] = self::WARNING;
                     $this->results[self::ACTION_CHECK][]         = [self::WARNING_NOTFOUND,
-                        $searchOption['name'] . "='$value'"
+                        $searchOption['name'] . "='$value'",
                     ];
                 }
                 break;
@@ -690,20 +678,12 @@ class PluginDatainjectionCommonInjectionLib
                 break;
 
             case 'contact':
-                if ($value != Dropdown::EMPTY_VALUE) {
-                    $id = self::findContact($value, $this->entity);
-                } else {
-                    $id = Dropdown::EMPTY_VALUE;
-                }
+                $id = $value != Dropdown::EMPTY_VALUE ? self::findContact($value, $this->entity) : Dropdown::EMPTY_VALUE;
                 $this->setValueForItemtype($itemtype, $linkfield, $id);
                 break;
 
             case 'user':
-                if ($value != Dropdown::EMPTY_VALUE) {
-                    $id =  self::findUser($value, $this->entity);
-                } else {
-                    $id =  Dropdown::EMPTY_VALUE;
-                }
+                $id = $value != Dropdown::EMPTY_VALUE ? self::findUser($value, $this->entity) : Dropdown::EMPTY_VALUE;
                 $this->setValueForItemtype($itemtype, $linkfield, $id);
                 break;
 
@@ -713,7 +693,7 @@ class PluginDatainjectionCommonInjectionLib
                         $itemtype,
                         $searchOption,
                         $field,
-                        $this->values
+                        $this->values,
                     );
                     $this->setValueForItemtype($itemtype, $linkfield, $id);
                 } else {
@@ -725,9 +705,9 @@ class PluginDatainjectionCommonInjectionLib
     /**
     * Add additional parameters needed for dropdown import
     *
-    * @param itemtype dropdrown's itemtype
+    * @param string $itemtype dropdrown's itemtype
     *
-    * @return an array with additional options to be added
+    * @return array with additional options to be added
    **/
     private function addExternalDropdownParameters($itemtype)
     {
@@ -747,13 +727,14 @@ class PluginDatainjectionCommonInjectionLib
                             = $DB->escape(
                                 Dropdown::getDropdownName(
                                     'glpi_manufacturers',
-                                    $values[$field]
-                                )
+                                    $values[$field],
+                                ),
                             );
                             break;
                         }
                         // TODO: is fall-through intentional here ?
 
+                        // no break
                     default:
                         $external[$addvalue] = $values[$field];
                 }
@@ -768,10 +749,10 @@ class PluginDatainjectionCommonInjectionLib
     /**
     * Find a user. Look for login OR firstname + lastname OR lastname + firstname
     *
-    * @param value the user to look for
-    * @param entity the entity where the user should have right
+    * @param string $value the user to look for
+    * @param int|string $entity the entity where the user should have right
     *
-    * @return the user ID if found or ''
+    * @return int|string the user ID if found or ''
    **/
     private static function findUser($value, $entity)
     {
@@ -783,10 +764,9 @@ class PluginDatainjectionCommonInjectionLib
               WHERE LOWER(`name`) = '" . strtolower($value) . "'
                  OR (CONCAT(LOWER(`realname`),' ',LOWER(`firstname`)) = '" . strtolower($value) . "'
                     OR CONCAT(LOWER(`firstname`),' ',LOWER(`realname`)) = '" . strtolower($value) . "')";
-        /** @phpstan-ignore-next-line */
-        $result = $DB->query($sql); // phpcs:ignore
+        $result = $DB->doQuery($sql);
         if ($DB->numrows($result) > 0) {
-           //check if user has right on the current entity
+            //check if user has right on the current entity
             $ID       = $DB->result($result, 0, "id");
             $entities = Profile_User::getUserEntities($ID, true);
 
@@ -802,10 +782,10 @@ class PluginDatainjectionCommonInjectionLib
     /**
     * Find a user. Look for login OR firstname + lastname OR lastname + firstname
     *
-    * @param value the user to look for
-    * @param entity the entity where the user should have right
+    * @param string $value the user to look for
+    * @param int|string $entity the entity where the user should have right
     *
-    * @return the user ID if found or ''
+    * @return int|string the user ID if found or ''
    */
     private static function findContact($value, $entity)
     {
@@ -818,11 +798,10 @@ class PluginDatainjectionCommonInjectionLib
                  AND (LOWER(`name`) = '" . strtolower($value) . "'
                     OR (CONCAT(LOWER(`name`),' ',LOWER(`firstname`)) = '" . strtolower($value) . "'
                        OR CONCAT(LOWER(`firstname`),' ',LOWER(`name`)) = '" . strtolower($value) . "'))";
-        /** @phpstan-ignore-next-line */
-        $result = $DB->query($sql); // phpcs:ignore
+        $result = $DB->doQuery($sql);
 
         if ($DB->numrows($result) > 0) {
-           //check if user has right on the current entity
+            //check if user has right on the current entity
             return $DB->result($result, 0, "id");
         }
         return self::DROPDOWN_EMPTY_VALUE;
@@ -832,12 +811,12 @@ class PluginDatainjectionCommonInjectionLib
     /**
     * Find id for a single type
     *
-    * @param item the ComonDBTM item representing an itemtype
-    * @param searchOption searchOption related to the item
-    * @param entity the current entity
-    * @param value the name of the item for which id must be returned
+    * @param CommonDBTM $item the CommonDBTM item representing an itemtype
+    * @param array $searchOption searchOption related to the item
+    * @param int|string $entity the current entity
+    * @param string $value the name of the item for which id must be returned
     *
-    * @return the id of the item found
+    * @return int|string the id of the item found
    **/
     private static function findSingle($item, $searchOption, $entity, $value)
     {
@@ -858,16 +837,15 @@ class PluginDatainjectionCommonInjectionLib
                 $item->getTable(),
                 'entities_id',
                 $entity,
-                $item->maybeRecursive()
+                $item->maybeRecursive(),
             );
         }
 
         $query .= " AND `" . $searchOption['field'] . "` = '$value'";
-        /** @phpstan-ignore-next-line */
-        $result = $DB->query($query); // phpcs:ignore
+        $result = $DB->doQuery($query);
 
         if ($DB->numrows($result) > 0) {
-           //check if user has right on the current entity
+            //check if user has right on the current entity
             return $DB->result($result, 0, "id");
         } else {
             return self::DROPDOWN_EMPTY_VALUE;
@@ -877,33 +855,30 @@ class PluginDatainjectionCommonInjectionLib
     /**
     * Get values to inject for an itemtype
     *
-    * @param the itemtype
+    * @param string $itemtype
     *
-    * @return an array with all values for this itemtype
+    * @return string|false an array with all values for this itemtype
    **/
     public function getValuesForItemtype($itemtype)
     {
 
-        if (isset($this->values[$itemtype])) {
-            return $this->values[$itemtype];
-        }
-        return false;
+        return $this->values[$itemtype] ?? false;
     }
 
 
     /**
     * Get values to inject for an itemtype
     *
-    * @param the itemtype
+    * @param string $itemtype
     *
-    * @return an array with all values for this itemtype
+    * @return string|false an array with all values for this itemtype
    **/
     private function getValueByItemtypeAndName($itemtype, $field)
     {
 
         $values = $this->getValuesForItemtype($itemtype);
         if ($values) {
-            return (isset($values[$field]) ? $values[$field] : false);
+            return ($values[$field] ?? false);
         }
         return false;
     }
@@ -912,7 +887,7 @@ class PluginDatainjectionCommonInjectionLib
     /**
     * Unset a value to inject for an itemtype
     *
-    * @param the itemtype
+    * @param string $itemtype
     *
     * @return void nothing
    **/
@@ -928,36 +903,55 @@ class PluginDatainjectionCommonInjectionLib
     /**
      * Set values to inject for an itemtype
      *
-     * @param $itemtype
-     * @param $field name
-     * @param $value of the field
-     * @param $fromdb boolean
+     * @param string $itemtype
+     * @param string $field name
+     * @param string|int $value of the field
+     * @param boolean $fromdb boolean
      **/
     private function setValueForItemtype($itemtype, $field, $value, $fromdb = false)
     {
-
-       // TODO awfull hack, text ftom CSV set more than once, so check if "another" value
+        if ($itemtype === User::class && $field === "pdffont" && $fromdb) {
+            return;
+        }
+        $injectionClass = self::getInjectionClassInstance($itemtype);
+        // TODO awfull hack, text ftom CSV set more than once, so check if "another" value
         if (isset($this->values[$itemtype][$field]) && $this->values[$itemtype][$field] != $value) {
-           // Data set twice (probably CSV + Additional info)
-            $injectionClass = self::getInjectionClassInstance($itemtype);
+            // Data set twice (probably CSV + Additional info)
             $option = self::findSearchOption($injectionClass->getOptions($itemtype), $field);
 
             if (isset($option['displaytype']) && $option['displaytype'] == 'multiline_text') {
-                if ($fromdb) {
-                    $this->values[$itemtype][$field] = $value . "\n" . $this->values[$itemtype][$field];
-                } else {
-                    $this->values[$itemtype][$field] = $this->values[$itemtype][$field] . "\n" . $value;
+                // If replace_multiline_value is true, the old value is replaced with the new value
+                // else, the new value is added to the old value
+                if (!$this->rights['replace_multiline_value']) {
+                    if ($fromdb) {
+                        $this->values[$itemtype][$field] = $value . "\n" . $this->values[$itemtype][$field];
+                    } else {
+                        $this->values[$itemtype][$field] = $this->values[$itemtype][$field] . "\n" . $value;
+                    }
                 }
-            } else if (
+            } elseif (
                 ($fromdb && $value && !$this->rights['overwrite_notempty_fields'])
                 || !$fromdb
             ) {
-               // Overwrite value in DB (from CSV) if allowed in the model option.
+                // Overwrite value in DB (from CSV) if allowed in the model option.
                 $this->values[$itemtype][$field] = $value;
             }
         } else { // First value
-            if (is_null($value)) {
-                $this->values[$itemtype][$field] = "NULL";
+            $booleanFields = [
+                'is_dynamic',
+                'is_recursive',
+                'is_template',
+                'is_deleted',
+                'is_active',
+            ];
+            if (empty($value)) {
+                if (isForeignKeyField($field) || (str_contains($field, 'is_')) || (method_exists($injectionClass, 'isNullable') && !$injectionClass->isNullable($field))) {
+                    // If the field is an id, we set it to 0
+                    $this->values[$itemtype][$field] = self::DROPDOWN_EMPTY_VALUE;
+                } else {
+                    // Else we set it to NULL
+                    $this->values[$itemtype][$field] = self::EMPTY_VALUE;
+                }
             } else {
                 $this->values[$itemtype][$field] = $value;
             }
@@ -968,22 +962,24 @@ class PluginDatainjectionCommonInjectionLib
     /**
     * Get a template name by giving his ID
     *
-    * @param itemtype the objet's type
-    * @param id the template's id
+    * @param string $itemtype the objet's type
+    * @param string $name the template's name
     *
-    * @return name of the template or false is no template found
+    * @return string|false name of the template or false is no template found
    **/
     private static function getTemplateIDByName($itemtype, $name)
     {
         /** @var DBmysql $DB */
         global $DB;
-        $item = new $itemtype();
+        if (!is_a($itemtype, CommonDBTM::class, true)) {
+            throw new HttpException(500, 'Class ' . $itemtype . ' is not a valid class');
+        }
+        new $itemtype();
         $query = "SELECT `id`
                 FROM `" . getTableForItemType($itemtype) . "`
                 WHERE `is_template` = '1'
                       AND `template_name` = '$name'";
-        /** @phpstan-ignore-next-line */
-        $result = $DB->query($query); // phpcs:ignore
+        $result = $DB->doQuery($query);
 
         if ($DB->numrows($result) > 0) {
             return $DB->result($result, 0, 'id');
@@ -1006,22 +1002,21 @@ class PluginDatainjectionCommonInjectionLib
     private function reformatFirstPass()
     {
 
-       //Browse all fields & values
+        //Browse all fields & values
         foreach ($this->values as $itemtype => $data) {
             $injectionClass = self::getInjectionClassInstance($itemtype);
 
-           //Get search options associated with the injectionClass
+            //Get search options associated with the injectionClass
             $searchOptions = $injectionClass->getOptions($itemtype);
 
-            foreach ($data as $field => $value) {
-                if ($value && $value == "NULL") {
-                    // TODO: fix this code
-                    // if (isset($option['datatype']) && self::isFieldADropdown($option['displaytype'])) {
-                    if (false) {
-                        $this->values[$itemtype][$field] = self::EMPTY_VALUE;
-                    }
-                }
-            }
+            // TODO: fix this code
+            // foreach ($data as $field => $value) {
+            //     if ($value && $value == "NULL") {
+            //         if (false) {
+            //             $this->values[$itemtype][$field] = self::EMPTY_VALUE;
+            //         }
+            //     }
+            // }
         }
     }
 
@@ -1053,10 +1048,10 @@ class PluginDatainjectionCommonInjectionLib
         global $CFG_GLPI;
 
         foreach ($this->values as $itemtype => $data) {
-           //Get injectionClass associated with the itemtype
+            //Get injectionClass associated with the itemtype
             $injectionClass = self::getInjectionClassInstance($itemtype);
 
-           //Get search options associated with the injectionClass
+            //Get search options associated with the injectionClass
             $searchOptions = $injectionClass->getOptions($this->primary_type);
 
             foreach ($data as $field => $value) {
@@ -1064,7 +1059,7 @@ class PluginDatainjectionCommonInjectionLib
                 $option = self::findSearchOption($searchOptions, $field);
 
                 // Check some types
-                switch (isset($option['checktype']) ? $option['checktype'] : 'text') {
+                switch ($option['checktype'] ?? 'text') {
                     case "date":
                         //If the value is a date, try to reformat it if it's not the good type
                         //(dd-mm-yyyy instead of yyyy-mm-dd)
@@ -1078,7 +1073,7 @@ class PluginDatainjectionCommonInjectionLib
 
                     case "float":
                         $float = self::reformatFloat($value, $this->getFloatFormat());
-                        $this->setValueForItemtype($itemtype, $field, $float);
+                        $this->setValueForItemtype($itemtype, $field, (string) $float);
                         break;
 
                     default:
@@ -1111,10 +1106,10 @@ class PluginDatainjectionCommonInjectionLib
     * xx,xxx.xx
     * xxxx,xx
     *
-    * @param value : the float to reformat
-    * @param the float format
+    * @param float|array $value : the float to reformat
+    * @param string $format the float format
     *
-    * @return the float modified as expected in GLPI
+    * @return float|array modified as expected in GLPI
    **/
     private static function reformatFloat($value, $format)
     {
@@ -1123,13 +1118,13 @@ class PluginDatainjectionCommonInjectionLib
             return $value;
         }
 
-       //TODO : replace str_replace by a regex
+        //TODO : replace str_replace by a regex
         switch ($format) {
             case self::FLOAT_TYPE_COMMA:
                 $value = str_replace(
                     [" ", ","],
                     ["","."],
-                    $value
+                    $value,
                 );
                 break;
 
@@ -1149,9 +1144,9 @@ class PluginDatainjectionCommonInjectionLib
     /**
     * Reformat date from dd-mm-yyyy to yyyy-mm-dd
     *
-    * @param original_date the original date
+    * @param string $original_date the original date
     *
-    * @return the date reformated, if needed
+    * @return string the date reformated, if needed
    **/
     private static function reformatDate($original_date, $date_format)
     {
@@ -1165,7 +1160,7 @@ class PluginDatainjectionCommonInjectionLib
                 $new_date = preg_replace(
                     '/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/',
                     '\1-\2-\3',
-                    $original_date
+                    $original_date,
                 );
                 break;
 
@@ -1173,7 +1168,7 @@ class PluginDatainjectionCommonInjectionLib
                 $new_date = preg_replace(
                     '/(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/',
                     '\3-\2-\1',
-                    $original_date
+                    $original_date,
                 );
                 break;
 
@@ -1181,12 +1176,12 @@ class PluginDatainjectionCommonInjectionLib
                 $new_date = preg_replace(
                     '/(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/',
                     '\3-\1-\2',
-                    $original_date
+                    $original_date,
                 );
                 break;
         }
 
-        if (preg_match('/[0-9]{2,4}-[0-9]{1,2}-[0-9]{1,2}/', $new_date)) {
+        if (preg_match('/[0-9]{2,4}-[0-9]{1,2}-[0-9]{1,2}/', $new_date) !== 0) {
             return $new_date;
         }
         return $original_date;
@@ -1196,9 +1191,9 @@ class PluginDatainjectionCommonInjectionLib
     /**
     * Reformat mac adress if mac doesn't contains : or - as seperator
     *
-    * @param mac the original mac address
+    * @param string $mac the original mac address
     *
-    * @return the mac address modified, if needed
+    * @return string the mac address modified, if needed
    **/
     private static function reformatMacAddress($mac)
     {
@@ -1237,7 +1232,7 @@ class PluginDatainjectionCommonInjectionLib
 
         foreach ($this->values as $itemtype => $fields) {
             $injectionClass = self::getInjectionClassInstance($itemtype);
-           //Get search options associated with the injectionClass
+            //Get search options associated with the injectionClass
             $searchOptions = $injectionClass->getOptions($itemtype);
 
             foreach ($fields as $field => $value) {
@@ -1246,7 +1241,7 @@ class PluginDatainjectionCommonInjectionLib
                     $mandatory = $this->mandatory_fields[$itemtype][$field];
                 }
 
-               //Get search option associated with the field
+                //Get search option associated with the field
                 $option = self::findSearchOption($searchOptions, $field);
 
                 if ($value == self::EMPTY_VALUE && $mandatory) {
@@ -1260,10 +1255,10 @@ class PluginDatainjectionCommonInjectionLib
                         $option,
                         $field,
                         $value,
-                        $mandatory
+                        $mandatory,
                     );
                     $this->results[self::ACTION_CHECK][] = [$check_result,
-                        $field . "='$value'"
+                        $field . "='$value'",
                     ];
 
                     if ($check_result != self::SUCCESS) {
@@ -1280,9 +1275,9 @@ class PluginDatainjectionCommonInjectionLib
     /**
     * Is a value a float ?
     *
-    * @param val the value to check
+    * @param mixed $val the value to check
     *
-    * @return true if it's a float, false otherwise
+    * @return boolean true if it's a float, false otherwise
     */
     private function isFloat($val)
     {
@@ -1293,9 +1288,9 @@ class PluginDatainjectionCommonInjectionLib
     /**
     * Is a value an integer ?
     *
-    * @param val the value to check
+    * @param mixed $val the value to check
     *
-    * @return true if it's an integer, false otherwise
+    * @return boolean true if it's an integer, false otherwise
     */
     private function isInteger($val)
     {
@@ -1306,18 +1301,21 @@ class PluginDatainjectionCommonInjectionLib
     /**
     * Check one data
     *
-    * @param the type of data waited
-    * @param data the data to import
+    * @param PluginDatainjectionInjectionInterface $injectionClass the injection class
+    * @param array $option the option associated with the field
+    * @param string $field_name the field name
+    * @param mixed $data the data to check
+    * @param boolean $mandatory is the field mandatory
     *
-    * @return true if the data is the correct type
+    * @return int the result of the check
    **/
     private function checkType($injectionClass, $option, $field_name, $data, $mandatory)
     {
 
         if (!empty($option)) {
-            $field_type = (isset($option['checktype']) ? $option['checktype'] : 'text');
+            $field_type = ($option['checktype'] ?? 'text');
 
-           //If no data provided AND this mapping is not mandatory
+            //If no data provided AND this mapping is not mandatory
             if (
                 !$mandatory
                 && ($data == null || $data == "NULL" || $data == self::EMPTY_VALUE)
@@ -1347,7 +1345,7 @@ class PluginDatainjectionCommonInjectionLib
                     // Date is already "reformat" according to getDateFormat()
                     $pat = '/^([0-9]{4})-([0-9]{1,2})-([0-9]{1,2})$/';
                     $res = preg_match($pat, $data, $regs);
-                    return ($res ? self::SUCCESS : self::TYPE_MISMATCH);
+                    return ($res !== 0 ? self::SUCCESS : self::TYPE_MISMATCH);
 
                 case 'ip':
                     preg_match("/([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})/", $data, $regs);
@@ -1371,9 +1369,10 @@ class PluginDatainjectionCommonInjectionLib
                         return self::TYPE_MISMATCH;
                     }
 
+                    // no break
                 default:
-                 //Not a standard check ? Try checks specific to the injection class
-                 //Will return SUCCESS if it's not a specific check
+                    //Not a standard check ? Try checks specific to the injection class
+                    //Will return SUCCESS if it's not a specific check
                     if (method_exists($injectionClass, 'checkType')) {
                         return $injectionClass->checkType($field_name, $data, $mandatory);
                     }
@@ -1402,10 +1401,10 @@ class PluginDatainjectionCommonInjectionLib
         if (method_exists($this->injectionClass, 'addSpecificNeededFields')) {
             $specific_fields = $this->injectionClass->addSpecificNeededFields(
                 $this->primary_type,
-                $this->values
+                $this->values,
             );
             foreach ($specific_fields as $field => $value) {
-                  $this->setValueForItemtype($this->primary_type, $field, $value);
+                $this->setValueForItemtype($this->primary_type, $field, $value);
             }
         }
     }
@@ -1413,28 +1412,28 @@ class PluginDatainjectionCommonInjectionLib
     /**
     * Add fields needed to inject and itemtype
     *
-    * @param injectionClass class which represents the object to inject
-    * @param itemtype the itemtype to inject
+    * @param object $injectionClass class which represents the object to inject
+    * @param string $itemtype the itemtype to inject
     *
     * @return void nothing
    **/
     private function addNeededFields($injectionClass, $itemtype)
     {
 
-       //Add itemtype
+        //Add itemtype
         $this->setValueForItemtype($itemtype, 'itemtype', $this->primary_type);
 
-       //Add primary item's id
+        //Add primary item's id
         $id = $this->getValueByItemtypeAndName($this->primary_type, 'id');
         $this->setValueForItemtype($itemtype, 'items_id', $id);
 
-       //Add entities_id if itemtype can be assigned to an entity
+        //Add entities_id if itemtype can be assigned to an entity
         if ($injectionClass->isEntityAssign()) {
             $entities_id = $this->getValueByItemtypeAndName($this->primary_type, 'entities_id');
             $this->setValueForItemtype($itemtype, 'entities_id', $entities_id);
         }
 
-       //Add is_recursive if itemtype can be assigned recursive
+        //Add is_recursive if itemtype can be assigned recursive
         if ($injectionClass->isRecursive()) {
             $recursive = $this->getValueByItemtypeAndName($this->primary_type, 'is_recursive');
             $this->setValueForItemtype($itemtype, 'is_recursive', $recursive);
@@ -1443,10 +1442,10 @@ class PluginDatainjectionCommonInjectionLib
         if (method_exists($injectionClass, 'addSpecificNeededFields')) {
             $specific_fields = $injectionClass->addSpecificNeededFields(
                 $this->primary_type,
-                $this->values
+                $this->values,
             );
             foreach ($specific_fields as $field => $value) {
-                 $this->setValueForItemtype($itemtype, $field, $value);
+                $this->setValueForItemtype($itemtype, $field, $value);
             }
         }
     }
@@ -1460,7 +1459,7 @@ class PluginDatainjectionCommonInjectionLib
     private function lastCheckBeforeProcess($injectionClass, $values)
     {
 
-       //Specific reformat action is itemtype needs it
+        //Specific reformat action is itemtype needs it
         if (method_exists($injectionClass, 'lastCheck')) {
             return $injectionClass->lastCheck($this->values);
         } else {
@@ -1475,7 +1474,7 @@ class PluginDatainjectionCommonInjectionLib
     /**
     * Process of inject data into GLPI
     *
-    * @return an array which contains the injection results
+    * @return array which contains the injection results
    **/
     public function processAddOrUpdate()
     {
@@ -1483,47 +1482,44 @@ class PluginDatainjectionCommonInjectionLib
         $add      = true;
         $accepted = false;
 
-        $this->values = Sanitizer::dbUnescapeRecursive($this->values);
-       //Toolbox::logDebug("processAddOrUpdate(), start with", $this->values);
+        //Toolbox::logDebug("processAddOrUpdate(), start with", $this->values);
 
-       // Initial value, will be change when problem
+        // Initial value, will be change when problem
         $this->results['status']                     = self::SUCCESS;
         $this->results[self::ACTION_CHECK]['status'] = self::SUCCESS;
 
-       //Manage fields belonging to relations between tables
+        //Manage fields belonging to relations between tables
         $this->manageRelations();
 
         $accepted = $this->processDictionnariesIfNeeded();
 
-       //Get real value for fields (ie dropdown, etc)
+        //Get real value for fields (ie dropdown, etc)
         $this->manageFieldValues();
 
-       //Check if the type to inject requires additional fields
-       //(for example to link it with another type)
+        //Check if the type to inject requires additional fields
+        //(for example to link it with another type)
         if (!$this->areTypeMandatoryFieldsOK($this->injectionClass)) {
             $process                                     = false;
             $this->results['status']                     = self::FAILED;
             $this->results[self::ACTION_CHECK]['status'] = self::FAILED;
         } else {
-           //Check is data to be inject still exists in DB (update) or not (add)
+            //Check is data to be inject still exists in DB (update) or not (add)
             $this->dataAlreadyInDB($this->injectionClass, $this->primary_type);
             $process = true;
 
-           //No item found in DB
+            //No item found in DB
             if ($this->getValueByItemtypeAndName($this->primary_type, 'id') == self::ITEM_NOT_FOUND) {
-               //Can add item ?
+                //Can add item ?
                 $this->results['type'] = self::IMPORT_ADD;
                 if (!$accepted) {
                     $this->results['status'] = self::ERROR_IMPORT_REFUSED;
                     $process = false;
+                } elseif ($this->rights['can_add']) {
+                    $add = true;
+                    $this->unsetValue($this->primary_type, 'id');
                 } else {
-                    if ($this->rights['can_add']) {
-                        $add = true;
-                        $this->unsetValue($this->primary_type, 'id');
-                    } else {
-                        $process = false;
-                        $this->results['status'] = self::ERROR_CANNOT_IMPORT;
-                    }
+                    $process = false;
+                    $this->results['status'] = self::ERROR_CANNOT_IMPORT;
                 }
             } else { //Item found in DB
                 $this->results['type'] = self::IMPORT_UPDATE;
@@ -1540,23 +1536,23 @@ class PluginDatainjectionCommonInjectionLib
         }
 
         if ($process) {
-           //First : reformat data
+            //First : reformat data
             $this->reformat();
 
-           //Second : check data
+            //Second : check data
             $this->check();
             if ($this->results['status'] != self::FAILED) {
-               //Third : inject data
+                //Third : inject data
                 $item = $this->getItemInstance();
                 $item->getEmpty();
 
-               //Add important fields for injection
+                //Add important fields for injection
                 $this->addNecessaryFields();
 
-               //Add aditional infos
+                //Add aditional infos
                 $this->addOptionalInfos();
 
-               //Manage template only when adding an item
+                //Manage template only when adding an item
                 if ($this->results['type'] == self::IMPORT_ADD) {
                     //If needed, manage templates
                     $this->addTemplateFields($this->primary_type);
@@ -1567,48 +1563,49 @@ class PluginDatainjectionCommonInjectionLib
                 if (!$newID) {
                     $this->results['status'] = self::WARNING;
                 } else {
-                  //Store id of the injected item
+                    //Store id of the injected item
                     $this->setValueForItemtype($this->primary_type, 'id', $newID);
 
-                  //If type needs it : process more data after type import
+                    //If type needs it : process more data after type import
                     $this->processAfterInsertOrUpdate($this->injectionClass, $add);
-                  //$this->results['status'] = self::SUCCESS;
+                    //$this->results['status'] = self::SUCCESS;
                     $this->results[get_class($item)] = $newID;
 
-                  //Process other types
+                    //Process other types
 
-                  //change order of items if needed
+                    //change order of items if needed
                     if (isset($this->values['NetworkPort']) && isset($this->values['NetworkName'])) {
                         $nw = $this->values['NetworkPort'];
                         unset($this->values['NetworkPort']);
                         $networkNameIndex = array_search('NetworkName', array_keys($this->values));
                         $this->values = array_merge(
                             array_slice($this->values, 0, $networkNameIndex),
-                            array('NetworkPort' => $nw),
-                            array_slice($this->values, $networkNameIndex)
+                            ['NetworkPort' => $nw],
+                            array_slice($this->values, $networkNameIndex),
                         );
                     }
 
                     foreach ($this->values as $itemtype => $data) {
-                       //Do not process primary_type
-
+                        //Do not process primary_type
                         if ($itemtype != get_class($item)) {
                             $injectionClass = self::getInjectionClassInstance($itemtype);
-                            $item           = new $itemtype();
+                            if (is_a($itemtype, CommonDBTM::class, true)) {
+                                $item           = new $itemtype();
 
-                            $this->addNeededFields($injectionClass, $itemtype);
-                            $this->dataAlreadyInDB($injectionClass, $itemtype);
+                                $this->addNeededFields($injectionClass, $itemtype);
+                                $this->dataAlreadyInDB($injectionClass, $itemtype);
 
-                            if ($this->getValueByItemtypeAndName($itemtype, 'id') == self::ITEM_NOT_FOUND) {
-                                 $add = true;
-                                 $this->unsetValue($itemtype, 'id');
-                            } else {
-                                $add = false;
-                            }
-                            $values = $this->getValuesForItemtype($itemtype);
-                            if ($this->lastCheckBeforeProcess($injectionClass, $values)) {
-                                $tmpID  = $this->effectiveAddOrUpdate($injectionClass, $item, $values, $add);
-                                $this->processAfterInsertOrUpdate($injectionClass, $add);
+                                if ($this->getValueByItemtypeAndName($itemtype, 'id') == self::ITEM_NOT_FOUND) {
+                                    $add = true;
+                                    $this->unsetValue($itemtype, 'id');
+                                } else {
+                                    $add = false;
+                                }
+                                $values = $this->getValuesForItemtype($itemtype);
+                                if ($this->lastCheckBeforeProcess($injectionClass, $values)) {
+                                    $tmpID  = $this->effectiveAddOrUpdate($injectionClass, $item, $values, $add);
+                                    $this->processAfterInsertOrUpdate($injectionClass, $add);
+                                }
                             }
                         }
                     }
@@ -1622,36 +1619,36 @@ class PluginDatainjectionCommonInjectionLib
     /**
     * Perform data injection into GLPI DB
     *
-    * @param injectionClass class which represents the object to inject
-    * @param item the CommonDBTM object representing the itemtype to inject
-    * @param values the values to inject
-    * @param add true to insert an object, false to update an existing object
+    * @param PluginDatainjectionInjectionInterface $injectionClass class which represents the object to inject
+    * @param CommonDBTM $item the CommonDBTM object representing the itemtype to inject
+    * @param array|string|false $values the values to inject
+    * @param boolean $add true to insert an object, false to update an existing object
     *
-    * @return the id of the object added or updated
+    * @return int|string the id of the object added or updated
    **/
     private function effectiveAddOrUpdate($injectionClass, $item, $values, $add = true)
     {
 
-       //Insert data using the standard add() method
+        //Insert data using the standard add() method
         $toinject = [];
         $options  = $injectionClass->getOptions();
 
         foreach ($values as $key => $value) {
             $option = self::findSearchOption($options, $key);
-            if ($option !== false && isset($option['checktype']) && $option['checktype'] == self::FIELD_VIRTUAL) {
+            if (!empty($option) && isset($option['checktype']) && $option['checktype'] == self::FIELD_VIRTUAL) {
                 break;
             }
 
             //CommonDBRelation are managed separately, so related field should be ignored
             // Ex : User -> groups_id -> Group_User
             // groups_id should not be injected in User (field contains group name (string))
-            if ($option !== false && isset($option['displaytype']) && $option['displaytype'] == 'relation' && !($item instanceof CommonDBRelation)) {
+            if (!empty($option) && isset($option['displaytype']) && $option['displaytype'] == 'relation') {
                 continue;
             }
 
-            if ($option !== false && self::isFieldADropdown($option['displaytype']) && $value == self::EMPTY_VALUE) {
+            if (!empty($option) && self::isFieldADropdown($option['displaytype']) && $value == self::EMPTY_VALUE) {
                 //If field is a dropdown and value is '', then replace it by 0
-                $toinject[$key] = self::DROPDOWN_EMPTY_VALUE;
+                continue;
             } else {
                 $toinject[$key] = $value;
             }
@@ -1662,10 +1659,24 @@ class PluginDatainjectionCommonInjectionLib
                 && in_array($key, [
                     'items_id',
                     'itemtype',
-                    $item::$items_id_1
+                    $item::$items_id_1,
                 ])
             ) {
                 $toinject[$key] = $value;
+            }
+
+            // handle new format for group type specification
+            // restricting to group_item relations only
+            if (($key === "groups_id_tech" || $key === "groups_id") && $option['table'] == getTableForItemType(Group::class) && !empty($option) && isset($option['joinparams']['beforejoin']['table']) && $option['joinparams']['beforejoin']['table'] === getTableForItemType(Group_Item::class) && isset($option['joinparams']['beforejoin']['joinparams']['condition']['NEWTABLE.type'])) {
+                $value = $option['joinparams']['beforejoin']['joinparams']['condition']['NEWTABLE.type'];
+                // depending on the type, set the correct field (_groups_id_tech => array or _groups_id => array)
+                // and unset the old one (groups_id_tech => int or groups_id => int)
+                if ($value == Group_Item::GROUP_TYPE_TECH) {
+                    $toinject["_groups_id_tech"] = [$value];
+                } else {
+                    $toinject["_groups"] = [$value];
+                }
+                unset($toinject[$key]);
             }
 
             //keep id in case of update
@@ -1674,33 +1685,29 @@ class PluginDatainjectionCommonInjectionLib
             }
         }
 
-        $toinject = Sanitizer::dbEscapeRecursive($toinject);
-
         $newID = null;
         if (method_exists($injectionClass, 'customimport')) {
             $newID = call_user_func(
                 [$injectionClass, 'customimport'],
                 $toinject,
                 $add,
-                $this->rights
+                $this->rights,
             );
-        } else if ($item instanceof CommonDropdown && $add) {
+        } elseif ($item instanceof CommonDropdown && $add && !($item instanceof SoftwareLicense)) {
             $newID = $item->import($toinject);
+        } elseif ($add) {
+            if ($newID = $item->add($toinject)) {
+                self::logAddOrUpdate($item, $add);
+            }
         } else {
-            if ($add) {
-                if ($newID = $item->add($toinject)) {
-                    self::logAddOrUpdate($item, $add);
-                }
-            } else {
-               // allow to update locked fields from datainjection
-               // for dynamic item if needed
-                if ($item->maybeDynamic()) {
-                    unset($toinject['is_dynamic']);
-                }
-                if ($item->update($toinject)) {
-                    $newID = $toinject['id'];
-                    self::logAddOrUpdate($item, $add);
-                }
+            // allow to update locked fields from datainjection
+            // for dynamic item if needed
+            if ($item->maybeDynamic()) {
+                unset($toinject['is_dynamic']);
+            }
+            if ($item->update($toinject)) {
+                $newID = $toinject['id'];
+                self::logAddOrUpdate($item, $add);
             }
         }
         $this->setValueForItemtype(get_class($item), 'id', $newID);
@@ -1721,14 +1728,16 @@ class PluginDatainjectionCommonInjectionLib
                 //Exception for template management
                 //We've got the template id, not let's add the template name
                 if ($field == 'templates_id') {
-                    $item = new $itemtype();
-                    if ($item->getFromDB($value)) {
-                        $this->setValueForItemtype(
-                            $itemtype,
-                            'template_name',
-                            $item->fields['template_name']
-                        );
-                         $this->setValueForItemtype($itemtype, '_oldID', $value);
+                    if (is_a($itemtype, CommonDBTM::class, true)) {
+                        $item = new $itemtype();
+                        if ($item->getFromDB($value)) {
+                            $this->setValueForItemtype(
+                                $itemtype,
+                                'template_name',
+                                $item->fields['template_name'],
+                            );
+                            $this->setValueForItemtype($itemtype, '_oldID', $value);
+                        }
                     }
                 } else {
                     $this->setValueForItemtype($itemtype, $field, $value);
@@ -1741,14 +1750,12 @@ class PluginDatainjectionCommonInjectionLib
     /**
     * If an optional info need more processing (for example password)
     *
-    * @param  itemtype being injected
-    * @param  field the optional info field
-    * @param  value the optional info value
+    * @param  $itemtype being injected
+    * @param  $field the optional info field
+    * @param  $value the optional info value
     * @return void nothing
     */
-    protected function addSpecificOptionalInfos($itemtype, $field, $value)
-    {
-    }
+    protected function addSpecificOptionalInfos($itemtype, $field, $value) {}
 
     /**
     * Process dictionnaries if needed
@@ -1759,9 +1766,9 @@ class PluginDatainjectionCommonInjectionLib
     protected function processDictionnariesIfNeeded()
     {
 
-       //If itemtype implements special process after type injection
+        //If itemtype implements special process after type injection
         if (method_exists($this->injectionClass, 'processDictionnariesIfNeeded')) {
-           //Invoke it
+            //Invoke it
             return $this->injectionClass->processDictionnariesIfNeeded($this->values);
         } else {
             return true;
@@ -1778,7 +1785,7 @@ class PluginDatainjectionCommonInjectionLib
 
         foreach ($this->values as $itemtype => $data) {
             $injectionClass = self::getInjectionClassInstance($itemtype);
-           //Get search options associated with the injectionClass
+            //Get search options associated with the injectionClass
             $searchOptions = $injectionClass->getOptions($this->primary_type);
 
             foreach ($searchOptions as $id => $option) {
@@ -1788,8 +1795,8 @@ class PluginDatainjectionCommonInjectionLib
                     && $option['displaytype'] == 'relation'
                     && isset($this->values[$itemtype][$option['linkfield']])
                 ) {
-                   //Get the relation object associated with the field
-                   //Add a new array for the relation object
+                    //Get the relation object associated with the field
+                    //Add a new array for the relation object
                     $value = $this->getValueByItemtypeAndName($itemtype, $option['linkfield']);
                     $this->getFieldValue(
                         null,
@@ -1797,7 +1804,7 @@ class PluginDatainjectionCommonInjectionLib
                         $option,
                         $option['linkfield'],
                         $value,
-                        true
+                        true,
                     );
                 }
             }
@@ -1808,8 +1815,8 @@ class PluginDatainjectionCommonInjectionLib
     /**
     * Function to check if the data to inject already exists in DB
     *
-    * @param class which represents type to inject
-    * @param itemtype the itemtype to inject
+    * @param object $injectionClass which represents type to inject
+    * @param string $itemtype the itemtype to inject
     *
     * @return void nothing
    **/
@@ -1821,16 +1828,16 @@ class PluginDatainjectionCommonInjectionLib
         $where    = "";
         $continue = true;
 
-        $searchOptions = $injectionClass->getOptions($this->primary_type);
+        $injectionClass->getOptions($this->primary_type);
 
-       //Add sql request checks specific to this itemtype
+        //Add sql request checks specific to this itemtype
         $options['checks']   = $this->checks;
         $options['itemtype'] = $this->primary_type;
 
-       //If injectionClass has a method to check if needed parameters are present
+        //If injectionClass has a method to check if needed parameters are present
         $values = $this->getValuesForItemtype($itemtype);
 
-       //If an itemtype needs special treatment (for example entity)
+        //If an itemtype needs special treatment (for example entity)
         if (method_exists($injectionClass, 'customDataAlreadyInDB')) {
             if ($res = $injectionClass->customDataAlreadyInDB($injectionClass, $values, $options)) {
                 $this->setValueForItemtype($itemtype, 'id', $res);
@@ -1842,28 +1849,25 @@ class PluginDatainjectionCommonInjectionLib
                 $continue = $injectionClass->checkParameters($values, $options);
             }
 
-           //Needed parameters are not present : not found
+            //Needed parameters are not present : not found
             if (!$continue) {
                 $this->values[$itemtype]['id'] = self::ITEM_NOT_FOUND;
             } else {
                 $sql = "SELECT *
                     FROM `" . $injectionClass->getTable() . "`";
 
+                if (!is_a($itemtype, CommonDBTM::class, true)) {
+                    throw new HttpException(500, 'Class ' . $itemtype . ' is not a valid class');
+                }
                 $item = new $itemtype();
-               //If it's a computer device
+                //If it's a computer device
                 if ($item instanceof CommonDevice) {
                     $sql .= " WHERE `designation` = '" .
                     $this->getValueByItemtypeAndName($itemtype, 'designation') . "'";
-                } else if ($item instanceof CommonDBRelation) {
-                   //Type is a relation : check it this relation still exists
-                   //Define the side of the relation to use
-
-                    if (method_exists($injectionClass, 'relationSide')) {
-                        $side = $injectionClass->relationSide();
-                    } else {
-                        $side = true;
-                    }
-
+                } elseif ($item instanceof CommonDBRelation) {
+                    //Type is a relation : check it this relation still exists
+                    //Define the side of the relation to use
+                    $side = method_exists($injectionClass, 'relationSide') ? $injectionClass->relationSide() : true;
                     if ($side) {
                         $source_id            = $item::$items_id_2;
                         $destination_id       = $item::$items_id_1;
@@ -1875,34 +1879,31 @@ class PluginDatainjectionCommonInjectionLib
                         $source_itemtype      = $item::$itemtype_1;
                         $destination_itemtype = $item::$itemtype_2;
                     }
-
                     $where .= " AND `$source_id`='" .
                     $this->getValueByItemtypeAndName($itemtype, $source_id) . "'";
-
                     if ($item->isField('itemtype')) {
                         $where .= " AND `$source_itemtype`='" .
                         $this->getValueByItemtypeAndName($itemtype, $source_itemtype) . "'";
                     }
-
                     $where .= " AND `" . $destination_id . "`='" .
                     $this->getValueByItemtypeAndName($itemtype, $destination_id) . "'";
                     $sql   .= " WHERE 1 " . $where;
                 } else {
-                   //Type is not a relation
+                    //Type is not a relation
 
-                   //Type can be deleted
+                    //Type can be deleted
                     if ($injectionClass->maybeDeleted()) {
                         $where .= " AND `is_deleted` = '0' ";
                     }
 
-                   //Type can be a template
+                    //Type can be a template
                     if ($injectionClass->maybeTemplate()) {
                         $where .= " AND `is_template` = '0' ";
                     }
 
-                   //Type can be assigned to an entity
+                    //Type can be assigned to an entity
                     if ($injectionClass->isEntityAssign()) {
-                       //Type can be recursive
+                        //Type can be recursive
                         if ($injectionClass->maybeRecursive()) {
                             $where_entity = getEntitiesRestrictRequest(
                                 " AND",
@@ -1910,12 +1911,12 @@ class PluginDatainjectionCommonInjectionLib
                                 "entities_id",
                                 $this->getValueByItemtypeAndName(
                                     $itemtype,
-                                    'entities_id'
+                                    'entities_id',
                                 ),
-                                true
+                                true,
                             );
                         } else {
-                           //Type cannot be recursive
+                            //Type cannot be recursive
                             $where_entity = " AND `entities_id` = '" .
                             $this->getValueByItemtypeAndName($itemtype, 'entities_id') . "'";
                         }
@@ -1923,7 +1924,7 @@ class PluginDatainjectionCommonInjectionLib
                         $where_entity = "";
                     }
 
-                   //Add mandatory fields to the query only if it's the primary_type to be injected
+                    //Add mandatory fields to the query only if it's the primary_type to be injected
                     if ($itemtype == $this->primary_type) {
                         foreach ($this->mandatory_fields[$itemtype] as $field => $is_mandatory) {
                             if ($is_mandatory) {
@@ -1931,38 +1932,35 @@ class PluginDatainjectionCommonInjectionLib
                                     $email = $DB->escape($this->getValueByItemtypeAndName($itemtype, $field));
                                     $where .= " AND `id` IN (SELECT `users_id` FROM glpi_useremails WHERE `email` = '$email') ";
                                 } else {
-                                    $where .= " AND `" . $field . "`='" .
-                                    $this->getValueByItemtypeAndName($itemtype, $field) . "'";
+                                    $where .= " AND `" . $field . "`='" . (string) $this->getValueByItemtypeAndName($itemtype, $field) . "'";
                                 }
                             }
                         }
                     } else {
-                       //Table contains an itemtype field
+                        //Table contains an itemtype field
                         if ($injectionClass->isField('itemtype')) {
                             $where .= " AND `itemtype` = '" . $this->getValueByItemtypeAndName(
                                 $itemtype,
-                                'itemtype'
+                                'itemtype',
                             ) . "'";
                         }
 
-                       //Table contains an items_id field
+                        //Table contains an items_id field
                         if ($injectionClass->isField('items_id')) {
                             $where .= " AND `items_id` = '" . $this->getValueByItemtypeAndName(
                                 $itemtype,
-                                'items_id'
+                                'items_id',
                             ) . "'";
                         }
                     }
 
-                   //Add additional parameters specific to this itemtype (or function checkPresent exists)
+                    //Add additional parameters specific to this itemtype (or function checkPresent exists)
                     if (method_exists($injectionClass, 'checkPresent')) {
                         $where .= $injectionClass->checkPresent($this->values, $options);
                     }
                     $sql .= " WHERE 1 " . $where_entity . " " . $where;
                 }
-
-                /** @phpstan-ignore-next-line */
-                $result = $DB->query($sql); // phpcs:ignore
+                $result = $DB->doQuery($sql);
                 if ($DB->numrows($result) > 0) {
                     $db_fields = $DB->fetchAssoc($result);
                     foreach ($db_fields as $key => $value) {
@@ -1980,15 +1978,18 @@ class PluginDatainjectionCommonInjectionLib
     /**
     * Add fields coming for a template to the values to be injected
     *
-    * @param $itemtype the itemtype to inject
+    * @param string $itemtype the itemtype to inject
     *
     * @return void
    **/
     private function addTemplateFields($itemtype)
     {
 
-       //If data inserted is not a template
+        //If data inserted is not a template
         if (!$this->getValueByItemtypeAndName($itemtype, 'is_template')) {
+            if (!is_a($itemtype, CommonDBTM::class, true)) {
+                throw new HttpException(500, 'Class ' . $itemtype . ' is not a valid class');
+            }
             $template    = new $itemtype();
             $template_id = $this->getValueByItemtypeAndName($itemtype, '_oldID');
 
@@ -2015,7 +2016,7 @@ class PluginDatainjectionCommonInjectionLib
                         "name",
                         true,
                         $itemtype,
-                        $this->values[$itemtype]['entities_id']
+                        $this->values[$itemtype]['entities_id'],
                     );
                     $this->setValueForItemtype($itemtype, 'name', $name);
                 }
@@ -2025,7 +2026,7 @@ class PluginDatainjectionCommonInjectionLib
                         "otherserial",
                         true,
                         $itemtype,
-                        $this->values[$itemtype]['entities_id']
+                        $this->values[$itemtype]['entities_id'],
                     );
                     $this->setValueForItemtype($itemtype, 'otherserial', $otherserial);
                 }
@@ -2037,9 +2038,8 @@ class PluginDatainjectionCommonInjectionLib
     /**
     * Log event into the history
     *
-    * @param device_type the type of the item to inject
-    * @param device_id the id of the inserted item
-    * @param the action_type the type of action(add or update)
+    * @param object $item the item to log
+    * @param boolean $add true if it's an add, false if it's an update
     *
     * @return void nothing
    **/
@@ -2049,11 +2049,7 @@ class PluginDatainjectionCommonInjectionLib
         if ($item->dohistory) {
             $changes[0] = 0;
 
-            if ($add) {
-                $changes[2] = __('Add from CSV file', 'datainjection');
-            } else {
-                $changes[2] = __('Update from CSV file', 'datainjection');
-            }
+            $changes[2] = $add ? __s('Add from CSV file', 'datainjection') : __s('Update from CSV file', 'datainjection');
             $changes[1] = "";
             Log::history($item->fields['id'], get_class($item), $changes);
         }
@@ -2063,31 +2059,27 @@ class PluginDatainjectionCommonInjectionLib
     /**
     * Get label associated with an injection action
     *
-    * @param action code as defined in the head of this file
+    * @param string $action code as defined in the head of this file
     *
-    * @return label associated with the code
+    * @return string label associated with the code
    **/
     public static function getActionLabel($action)
     {
 
-        $actions = [self::IMPORT_ADD    => __('Add'),
-            self::IMPORT_UPDATE => __('Update'),
-            self::IMPORT_DELETE => __('Delete')
+        $actions = [self::IMPORT_ADD    => __s('Add'),
+            self::IMPORT_UPDATE => __s('Update'),
+            self::IMPORT_DELETE => __s('Delete'),
         ];
-
-        if (isset($actions[$action])) {
-            return  $actions[$action];
-        }
-        return "";
+        return $actions[$action] ?? "";
     }
 
 
     /**
     * Get label associated with an injection result
     *
-    * @param action code as defined in the head of this file
+    * @param string|int $type code as defined in the head of this file
     *
-    * @return label associated with the code
+    * @return string label associated with the code
    **/
     public static function getLogLabel($type)
     {
@@ -2096,47 +2088,47 @@ class PluginDatainjectionCommonInjectionLib
 
         switch ($type) {
             case self::ERROR_CANNOT_IMPORT:
-                $message = __('No right to import data', 'datainjection');
+                $message = __s('No right to import data', 'datainjection');
                 break;
 
             case self::ERROR_CANNOT_UPDATE:
-                $message = __('No right to update data', 'datainjection');
+                $message = __s('No right to update data', 'datainjection');
                 break;
 
             case self::ERROR_FIELDSIZE_EXCEEDED:
-                $message = __('Size of the inserted value is to expansive', 'datainjection');
+                $message = __s('Size of the inserted value is to expansive', 'datainjection');
                 break;
 
             case self::ERROR_IMPORT_REFUSED:
-                $message = __('Import not allowed', 'datainjection');
+                $message = __s('Import not allowed', 'datainjection');
                 break;
 
             case self::FAILED:
-                $message = __('Import failed', 'datainjection');
+                $message = __s('Import failed', 'datainjection');
                 break;
 
             case self::MANDATORY:
-                $message = __('At least one mandatory field is not present', 'datainjection');
+                $message = __s('At least one mandatory field is not present', 'datainjection');
                 break;
 
             case self::SUCCESS:
-                $message = __('Data to insert are correct', 'datainjection');
+                $message = __s('Data to insert are correct', 'datainjection');
                 break;
 
             case self::TYPE_MISMATCH:
-                $message = __('One data is not the good type', 'datainjection');
+                $message = __s('One data is not the good type', 'datainjection');
                 break;
 
             case self::WARNING:
-                $message = __('Warning', 'datainjection');
+                $message = __s('Warning', 'datainjection');
                 break;
 
             case self::WARNING_NOTFOUND:
-                $message = __('Data not found', 'datainjection');
+                $message = __s('Data not found', 'datainjection');
                 break;
 
             default:
-                $message = __('Undetermined', 'datainjection');
+                $message = __s('Undetermined', 'datainjection');
                 break;
         }
 
@@ -2154,10 +2146,10 @@ class PluginDatainjectionCommonInjectionLib
 
         self::addTemplateSearchOptions($injectionClass, $type_searchOptions);
 
-       //Add linkfield for theses fields : no massive action is allowed in the core, but they can be
-       //imported using the commonlib
+        //Add linkfield for theses fields : no massive action is allowed in the core, but they can be
+        //imported using the commonlib
         $add_linkfield = ['comment' => 'comment',
-            'notepad' => 'notepad'
+            'notepad' => 'notepad',
         ];
 
         foreach ($type_searchOptions as $id => $tmp) {
@@ -2169,23 +2161,16 @@ class PluginDatainjectionCommonInjectionLib
                 }
 
                 if (!in_array($id, $options['ignore_fields']) && $id < 1000) {
-                    if (!isset($tmp['linkfield'])) {
-                        $type_searchOptions[$id]['injectable'] = self::FIELD_VIRTUAL;
-                    } else {
-                        $type_searchOptions[$id]['injectable'] = self::FIELD_INJECTABLE;
-                    }
-
+                    $type_searchOptions[$id]['injectable'] = !isset($tmp['linkfield']) ? self::FIELD_VIRTUAL : self::FIELD_INJECTABLE;
                     //Some injection.class files are missing dropdown options. Set displaytype as dropdown if datatype is dropdown
                     //$tmp['displaytype'] is still empty. Set to prevent overwriting on next IF
                     if ((isset($tmp['datatype']) && $tmp['datatype'] == 'dropdown') && !isset($tmp['displaytype'])) {
                         $type_searchOptions[$id]['displaytype'] = 'dropdown';
                         $tmp['displaytype'] = 'dropdown';
                     }
-
                     if (isset($tmp['linkfield']) && !isset($tmp['displaytype'])) {
                         $type_searchOptions[$id]['displaytype'] = 'text';
                     }
-
                     if (isset($tmp['linkfield']) && !isset($tmp['checktype'])) {
                         $type_searchOptions[$id]['checktype'] = 'text';
                     }
@@ -2193,7 +2178,7 @@ class PluginDatainjectionCommonInjectionLib
             }
         }
 
-       // Drop not injectable fields
+        // Drop not injectable fields
         foreach ($type_searchOptions as $id => $tmp) {
             if (!isset($tmp['injectable']) || $tmp['injectable'] <= 0) {
                 unset($type_searchOptions[$id]);
@@ -2210,13 +2195,13 @@ class PluginDatainjectionCommonInjectionLib
             }
         }
 
-       /*
-       * Preserve only one option per linkfield, as mapping process is based on arrays indexed by linkfield.
-       * This is a hack to handle behaviour explained in issue https://github.com/pluginsGLPI/datainjection/issues/121.
-       *
-       * Preserved option is "complename" if existing, or "name" if existing,
-       * or first founded option for each linkfield.
-       */
+        /*
+        * Preserve only one option per linkfield, as mapping process is based on arrays indexed by linkfield.
+        * This is a hack to handle behaviour explained in issue https://github.com/pluginsGLPI/datainjection/issues/121.
+        *
+        * Preserved option is "complename" if existing, or "name" if existing,
+        * or first founded option for each linkfield.
+        */
         $linkfield_preserved_option = array_fill_keys(array_column($type_searchOptions, 'linkfield'), null);
         foreach ($type_searchOptions as $option) {
             if (!array_key_exists('linkfield', $option)) {
@@ -2236,9 +2221,7 @@ class PluginDatainjectionCommonInjectionLib
 
         $type_searchOptions = array_filter(
             $type_searchOptions,
-            function ($option) use ($linkfield_preserved_option) {
-                return in_array($option, $linkfield_preserved_option);
-            }
+            fn($option) => in_array($option, $linkfield_preserved_option),
         );
 
         $main_itemtype = self::getItemtypeByInjectionClass($injectionClass);
@@ -2263,8 +2246,8 @@ class PluginDatainjectionCommonInjectionLib
     /**
     * Add necessary search options for template management
     *
-    * @param injectionClass the injection class to use
-    * @param tab the options tab, as an array (passed as a reference)
+    * @param PluginDatainjectionInjectionInterface $injectionClass the injection class to use
+    * @param array $tab the options tab, as an array (passed as a reference)
     *
     * @return void nothing
    **/
@@ -2272,13 +2255,16 @@ class PluginDatainjectionCommonInjectionLib
     {
 
         $itemtype = self::getItemtypeByInjectionClass($injectionClass);
+        if (!is_a($itemtype, CommonDBTM::class, true)) {
+            throw new HttpException(500, 'Class ' . $itemtype . ' is not a valid class');
+        }
         $item     = new $itemtype();
 
         if ($item->maybeTemplate()) {
             $tab[300]['table']       = $item->getTable();
             $tab[300]['field']       = 'is_template';
             $tab[300]['linkfield']   = 'is_template';
-            $tab[300]['name']        = __('is') . " " . __('Template') . " ?";
+            $tab[300]['name']        = __s('is') . " " . __s('Template') . " ?";
             $tab[300]['type']        = 'integer';
             $tab[300]['injectable']  = 1;
             $tab[300]['checktype']   = 'integer';
@@ -2286,7 +2272,7 @@ class PluginDatainjectionCommonInjectionLib
 
             $tab[301]['table']       = $item->getTable();
             $tab[301]['field']       = 'template_name';
-            $tab[301]['name']        = __('Template');
+            $tab[301]['name']        = __s('Template');
             $tab[301]['injectable']  = 1;
             $tab[301]['checktype']   = 'text';
             $tab[301]['displaytype'] = 'template';
@@ -2298,15 +2284,17 @@ class PluginDatainjectionCommonInjectionLib
     /**
     * If itemtype injection needs to process things after data is written in DB
     *
-    * @param  add true if an item is created, false if it's an update
+    * @param PluginDatainjectionInjectionInterface $injectionClass the injection class to use
+    * @param  $add true if an item is created, false if it's an update
+    *
     * @return void nothing
    **/
     private function processAfterInsertOrUpdate($injectionClass, $add = true)
     {
 
-       //If itemtype implements special process after type injection
+        //If itemtype implements special process after type injection
         if (method_exists($injectionClass, 'processAfterInsertOrUpdate')) {
-           //Invoke it
+            //Invoke it
             $injectionClass->processAfterInsertOrUpdate($this->values, $add, $this->rights);
         }
     }

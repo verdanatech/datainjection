@@ -5,7 +5,73 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
+## [2.15.2] - 2025-11-25
+
+### Fixed
+
+- Fix truncated CSV export
+- Fix injection for `groups_id` and `groups_id_tech` fields
+- Fix missing `purge` action
+- Fix `Model` visibilty criteria
+- Fix user fields nullability to prevent SQL errors during injection
+- Remove groups as import link field
+- Fix `clean` function
+
+## [2.14.4] - 2025-11-25
+
+### Fixed
+
+- Fix truncated CSV export
+- Fix missing `purge` action
+
+## [2.15.1] - 2025-10-14
+
+### Fixed
+
+- Fix file upload
+
+## [2.15.0] - 2025-09-30
+
+### Added
+
+- GLPI 11 compatibility
+
+### Fixed
+
+- Fix `NetworkName` ip adresses injection
+- Fix injection to the `date_expiration` of certificates
+- Fix the `Task completed` message during plugin update
+
+## [2.14.3] - 2025-09-16
+
+### Fixed
+
+- Fix `NetworkName` ip adresses injection
+- Fix injection to the `date_expiration` of certificates
+- Fix the `Task completed` message during plugin update
+- Fix `License` injection
+
+## [2.14.2] - 2025-08-22
+
+### Fixed
+
+- Use `global`  configuration for injection links
+- Escape  data when check if already exist
+- Fix injection of `values in entity tabs` when injecting an `entity`
+- Fix `pdffont` field error for users
+- Move `Notepads` search options to the Black List option
+- Fix the SQL error: `Column ‘...’ cannot be null in the query`
+
+
+### Added
+
+- Add option to `replace` (instead of `append`)  the value of multiline text fields (e.g. `comment`)
+
+
+### Removed
+
+- Integration of the WebService plugin (plugin is no longer maintained)
+
 
 ## [2.14.1] - 2024-12-27
 
