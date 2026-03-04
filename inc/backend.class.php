@@ -28,9 +28,6 @@
  * -------------------------------------------------------------------------
  */
 
-
-use function Safe\preg_match;
-
 /*
  * Common backend to read files to import
  */
@@ -42,9 +39,9 @@ abstract class PluginDatainjectionBackend
     protected $errmsg;
     protected $numberOfLines = 0;
 
-    public const ENCODING_ISO8859_1 = 0;
-    public const ENCODING_UFT8      = 1;
-    public const ENCODING_AUTO      = 2;
+    const ENCODING_ISO8859_1 = 0;
+    const ENCODING_UFT8      = 1;
+    const ENCODING_AUTO      = 2;
 
 
     /**
@@ -78,24 +75,16 @@ abstract class PluginDatainjectionBackend
    **/
     public static function getInstance($type)
     {
-        $allowedBackends = [
-            'csv' => PluginDatainjectionBackendcsv::class,
-        ];
 
-        if (!isset($allowedBackends[$type])) {
-            throw new InvalidArgumentException("Unknown backend type: $type");
-        }
-
-        return new $allowedBackends[$type]();
-
-
+        $class = 'PluginDatainjectionBackend' . $type;
+        return new $class();
     }
 
 
     public static function is_utf8($string) // phpcs:ignore
     {
 
-        // From http://w3.org/International/questions/qa-forms-utf-8.html
+       // From http://w3.org/International/questions/qa-forms-utf-8.html
         return preg_match(
             '%^(?:
              [\x09\x0A\x0D\x20-\x7E]            # ASCII
@@ -107,7 +96,7 @@ abstract class PluginDatainjectionBackend
            | [\xF1-\xF3][\x80-\xBF]{3}          # planes 4-15
            |  \xF4[\x80-\x8F][\x80-\xBF]{2}     # plane 16
        )*$%xs',
-            $string,
+            $string
         );
     }
 

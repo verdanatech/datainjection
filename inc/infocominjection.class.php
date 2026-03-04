@@ -28,14 +28,16 @@
  * -------------------------------------------------------------------------
  */
 
-
+if (!defined('GLPI_ROOT')) {
+    die("Sorry. You can't access directly to this file");
+}
 
 class PluginDatainjectionInfocomInjection extends Infocom implements PluginDatainjectionInjectionInterface
 {
     public static function getTable($classname = null)
     {
 
-        $parenttype = get_parent_class(self::class);
+        $parenttype = get_parent_class(__CLASS__);
         return $parenttype::getTable();
     }
 
@@ -67,11 +69,11 @@ class PluginDatainjectionInfocomInjection extends Infocom implements PluginDatai
         $tab[4]['checktype']    = 'date';
         $tab[5]['checktype']    = 'date';
 
-        //Warranty_duration
+       //Warranty_duration
         $tab[6]['minvalue']     = 0;
         $tab[6]['maxvalue']     = 120;
         $tab[6]['step']         = 1;
-        $tab[6]['-1']           = __s('Lifelong');
+        $tab[6]['-1']           = __('Lifelong');
         $tab[6]['checktype']    = 'integer';
 
         $tab[8]['checktype']    = 'float';
@@ -102,7 +104,7 @@ class PluginDatainjectionInfocomInjection extends Infocom implements PluginDatai
         // field: sink_coeff
         $tab[58]['checktype']   = 'decimal';
 
-        //Remove some options because some fields cannot be imported
+       //Remove some options because some fields cannot be imported
         $blacklist     = PluginDatainjectionCommonInjectionLib::getBlacklistedOptions(get_parent_class($this));
         $notimportable = [20, 21, 86];
 
@@ -117,7 +119,7 @@ class PluginDatainjectionInfocomInjection extends Infocom implements PluginDatai
             "decimal"          => [8, 13, 17, 58],
             "sink_type"        => [15],
             "alert"            => [22],
-            "multiline_text"   => [16],
+            "multiline_text"   => [16]
         ];
 
         return PluginDatainjectionCommonInjectionLib::addToSearchOptions($tab, $options, $this);
@@ -156,7 +158,7 @@ class PluginDatainjectionInfocomInjection extends Infocom implements PluginDatai
 
         foreach (
             ['order_date', 'use_date', 'buy_date', 'warranty_date', 'delivery_date',
-                'inventory_date',
+                'inventory_date'
             ] as $date
         ) {
             if (
@@ -185,7 +187,7 @@ class PluginDatainjectionInfocomInjection extends Infocom implements PluginDatai
             'warranty_date',
             'date_mod',
             'date_creation',
-            'decommission_date',
+            'decommission_date'
         ]);
     }
 

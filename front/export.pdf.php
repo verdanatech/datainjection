@@ -28,6 +28,8 @@
  * -------------------------------------------------------------------------
  */
 
+require '../../../inc/includes.php';
+
 Session::checkRight(PluginDatainjectionClientInjection::$rightname, READ);
 
 PluginDatainjectionModel::exportAsPDF($_GET['models_id']);

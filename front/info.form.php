@@ -28,12 +28,13 @@
  * -------------------------------------------------------------------------
  */
 
+require '../../../inc/includes.php';
 Session::checkLoginUser();
 
 /* Update mappings */
 if (isset($_POST["update"])) {
     PluginDatainjectionInfo::manageInfos($_POST['models_id'], $_POST);
-} elseif (isset($_POST["delete"])) {
+} else if (isset($_POST["delete"])) {
     $info = new PluginDatainjectionInfo();
     foreach ($_POST["item"] as $key => $val) {
         $input = ['id' => $key];

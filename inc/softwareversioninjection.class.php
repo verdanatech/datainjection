@@ -28,14 +28,16 @@
  * -------------------------------------------------------------------------
  */
 
-
+if (!defined('GLPI_ROOT')) {
+    die("Sorry. You can't access directly to this file");
+}
 
 class PluginDatainjectionSoftwareVersionInjection extends SoftwareVersion implements PluginDatainjectionInjectionInterface
 {
     public static function getTable($classname = null)
     {
 
-        $parenttype = get_parent_class(self::class);
+        $parenttype = get_parent_class(__CLASS__);
         return $parenttype::getTable();
     }
 
@@ -68,7 +70,7 @@ class PluginDatainjectionSoftwareVersionInjection extends SoftwareVersion implem
         $tab = Search::getOptions(get_parent_class($this));
 
         if ($primary_type == 'SoftwareVersion') {
-            $tab[100]['name']        = _sn('Software', 'Software', 1);
+            $tab[100]['name']        = _n('Software', 'Software', 1);
             $tab[100]['field']       = 'name';
             $tab[100]['table']       = getTableForItemType('Software');
             $tab[100]['linkfield']   = 'softwares_id';
@@ -77,7 +79,7 @@ class PluginDatainjectionSoftwareVersionInjection extends SoftwareVersion implem
             $tab[100]['injectable']  = true;
         }
 
-        //Remove some options because some fields cannot be imported
+       //Remove some options because some fields cannot be imported
         $blacklist     = PluginDatainjectionCommonInjectionLib::getBlacklistedOptions(get_parent_class($this));
         $notimportable = [];
 
@@ -88,7 +90,7 @@ class PluginDatainjectionSoftwareVersionInjection extends SoftwareVersion implem
 
         $options['displaytype']   = ["dropdown"       => [4,31],
             "multiline_text" => [16],
-            "software" => [100],
+            "software" => [100]
         ];
 
         return PluginDatainjectionCommonInjectionLib::addToSearchOptions($tab, $options, $this);
@@ -108,8 +110,8 @@ class PluginDatainjectionSoftwareVersionInjection extends SoftwareVersion implem
                 Computer::dropdown(
                     ['name'        => $name,
                         'entity'      => $_SESSION['glpiactive_entity'],
-                        'entity_sons' => false,
-                    ],
+                        'entity_sons' => false
+                    ]
                 );
                 break;
 
@@ -117,8 +119,8 @@ class PluginDatainjectionSoftwareVersionInjection extends SoftwareVersion implem
                 Software::dropdown(
                     ['name'        => $name,
                         'entity'      => $_SESSION['glpiactive_entity'],
-                        'entity_sons' => false,
-                    ],
+                        'entity_sons' => false
+                    ]
                 );
                 break;
 
@@ -160,7 +162,7 @@ class PluginDatainjectionSoftwareVersionInjection extends SoftwareVersion implem
                         "glpi_softwares",
                         "entities_id",
                         $fields_toinject['SoftwareVersion']['entities_id'],
-                        true,
+                        true
                     );
         $result = $DB->doQuery($query);
 

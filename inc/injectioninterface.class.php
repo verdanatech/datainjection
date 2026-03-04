@@ -28,7 +28,9 @@
  * -------------------------------------------------------------------------
  */
 
-
+if (!defined('GLPI_ROOT')) {
+    die("Sorry. You can't access directly to this file");
+}
 
 /**
  * Interface to implement for each type to inject

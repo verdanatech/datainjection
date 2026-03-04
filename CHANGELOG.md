@@ -5,52 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [2.15.3] - 2025-12-22
+## [unreleased]
 
-### Fixed
-
-- Fix `name` and `locations_id` when updating the `completename`
-- Fix user field updates and email import
-
-## [2.15.2] - 2025-11-25
-
-### Fixed
-
-- Fix truncated CSV export
-- Fix injection for `groups_id` and `groups_id_tech` fields
-- Fix missing `purge` action
-- Fix `Model` visibilty criteria
-- Fix user fields nullability to prevent SQL errors during injection
-- Remove groups as import link field
-- Fix `clean` function
-- Prevent fatal error with `Safe\ini_set()`
-
-## [2.14.4] - 2025-11-25
-
-### Fixed
-
-- Fix truncated CSV export
-- Fix missing `purge` action
-
-## [2.15.1] - 2025-10-14
-
-### Fixed
-
-- Fix file upload
-
-## [2.15.0] - 2025-09-30
-
-### Added
-
-- GLPI 11 compatibility
-
-### Fixed
-
-- Fix `NetworkName` ip adresses injection
-- Fix injection to the `date_expiration` of certificates
-- Fix the `Task completed` message during plugin update
-
-## [2.14.3] - 2025-09-16
+## [2.14.3] - 2025-10-14
 
 ### Fixed
 

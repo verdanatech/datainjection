@@ -34,11 +34,11 @@ class PluginDatainjectionDropdown
     {
 
         $date_format[PluginDatainjectionCommonInjectionLib::DATE_TYPE_DDMMYYYY]
-                                                          = __s('dd-mm-yyyy', 'datainjection');
+                                                          = __('dd-mm-yyyy', 'datainjection');
         $date_format[PluginDatainjectionCommonInjectionLib::DATE_TYPE_MMDDYYYY]
-                                                          = __s('mm-dd-yyyy', 'datainjection');
+                                                          = __('mm-dd-yyyy', 'datainjection');
         $date_format[PluginDatainjectionCommonInjectionLib::DATE_TYPE_YYYYMMDD]
-                                                          = __s('yyyy-mm-dd', 'datainjection');
+                                                          = __('yyyy-mm-dd', 'datainjection');
 
         return $date_format;
     }
@@ -48,7 +48,10 @@ class PluginDatainjectionDropdown
     {
 
         $dates = self::dateFormats();
-        return $dates[$date] ?? "";
+        if (isset($dates[$date])) {
+            return $dates[$date];
+        }
+        return "";
     }
 
 
@@ -56,11 +59,11 @@ class PluginDatainjectionDropdown
     {
 
         $float_format[PluginDatainjectionCommonInjectionLib::FLOAT_TYPE_DOT]
-                                                          = __s('1 234.56', 'datainjection');
+                                                          = __('1 234.56', 'datainjection');
         $float_format[PluginDatainjectionCommonInjectionLib::FLOAT_TYPE_COMMA]
-                                                          = __s('1 234,56', 'datainjection');
+                                                          = __('1 234,56', 'datainjection');
         $float_format[PluginDatainjectionCommonInjectionLib::FLOAT_TYPE_DOT_AND_COM]
-                                                          = __s('1,234.56', 'datainjection');
+                                                          = __('1,234.56', 'datainjection');
 
         return $float_format;
     }
@@ -73,7 +76,10 @@ class PluginDatainjectionDropdown
     {
 
         $formats = self::floatFormats();
-        return $formats[$format] ?? "";
+        if (isset($formats[$format])) {
+            return $formats[$format];
+        }
+        return "";
     }
 
 
@@ -81,16 +87,16 @@ class PluginDatainjectionDropdown
     {
 
         $states[0]                                            = Dropdown::EMPTY_VALUE;
-        //$states[PluginDatainjectionModel::INITIAL_STEP] = __s('Creation of the model on going', 'datainjection');
-        $states[PluginDatainjectionModel::FILE_STEP]          = __s('File to inject', 'datainjection');
-        $states[PluginDatainjectionModel::MAPPING_STEP]       = __s('Mappings', 'datainjection');
-        $states[PluginDatainjectionModel::OTHERS_STEP]        = __s(
+       //$states[PluginDatainjectionModel::INITIAL_STEP] = __('Creation of the model on going', 'datainjection');
+        $states[PluginDatainjectionModel::FILE_STEP]          = __('File to inject', 'datainjection');
+        $states[PluginDatainjectionModel::MAPPING_STEP]       = __('Mappings', 'datainjection');
+        $states[PluginDatainjectionModel::OTHERS_STEP]        = __(
             'Additional Information',
-            'datainjection',
+            'datainjection'
         );
-        $states[PluginDatainjectionModel::READY_TO_USE_STEP]  = __s(
+        $states[PluginDatainjectionModel::READY_TO_USE_STEP]  = __(
             'Model available for use',
-            'datainjection',
+            'datainjection'
         );
         return $states;
     }
@@ -105,31 +111,28 @@ class PluginDatainjectionDropdown
     {
 
         $states = self::statusLabels();
-        return $states[$step] ?? "";
-    }
-
-    public static function getStatusColor($step)
-    {
-        switch ($step) {
-            case PluginDatainjectionModel::MAPPING_STEP:
-            case PluginDatainjectionModel::OTHERS_STEP:
-                return "#ffb832";
-            case PluginDatainjectionModel::READY_TO_USE_STEP:
-                return "#2ec41f";
-            default:
-                return "#ff4e4e";
+        if (isset($states[$step])) {
+            return $states[$step];
         }
+        return "";
     }
 
 
-    public static function getFileEncodingValue()
+    public static function dropdownFileEncoding()
     {
 
-        $values[PluginDatainjectionBackend::ENCODING_AUTO]      = __s('Automatic detection', 'datainjection');
-        $values[PluginDatainjectionBackend::ENCODING_UFT8]      = __s('UTF-8', 'datainjection');
-        $values[PluginDatainjectionBackend::ENCODING_ISO8859_1] = __s('ISO8859-1', 'datainjection');
+        $values[PluginDatainjectionBackend::ENCODING_AUTO]      = __(
+            'Automatic detection',
+            'datainjection'
+        );
+        $values[PluginDatainjectionBackend::ENCODING_UFT8]      = __('UTF-8', 'datainjection');
+        $values[PluginDatainjectionBackend::ENCODING_ISO8859_1] = __('ISO8859-1', 'datainjection');
 
-        return $values;
+        Dropdown::showFromArray(
+            'file_encoding',
+            $values,
+            ['value' => PluginDatainjectionBackend::ENCODING_AUTO]
+        );
     }
 
 
@@ -137,18 +140,18 @@ class PluginDatainjectionDropdown
     {
 
         $values[PluginDatainjectionCommonInjectionLib::UNICITY_NETPORT_LOGICAL_NUMBER]
-                                           = __s('Port number');
+                                           = __('Port number');
         $values[PluginDatainjectionCommonInjectionLib::UNICITY_NETPORT_NAME]
-                                           = __s('Name');
+                                           = __('Name');
         $values[PluginDatainjectionCommonInjectionLib::UNICITY_NETPORT_MACADDRESS]
-                                           = __s('Mac address');
+                                           = __('Mac address');
         $values[PluginDatainjectionCommonInjectionLib::UNICITY_NETPORT_LOGICAL_NUMBER_NAME]
-                                           = __s('Port number') . "+" . __s('Name');
+                                           = __('Port number') . "+" . __('Name');
         $values[PluginDatainjectionCommonInjectionLib::UNICITY_NETPORT_LOGICAL_NUMBER_MAC]
-                                           = __s('Port number') . "+" . __s('Mac address');
+                                           = __('Port number') . "+" . __('Mac address');
         $values[PluginDatainjectionCommonInjectionLib::UNICITY_NETPORT_LOGICAL_NUMBER_NAME_MAC]
-                                           = __s('Port number') . "+" . __s('Name') . "+" .
-                                             __s('Mac address');
+                                           = __('Port number') . "+" . __('Name') . "+" .
+                                             __('Mac address');
         return $values;
     }
 
@@ -160,6 +163,9 @@ class PluginDatainjectionDropdown
     {
 
         $values = self::portUnicityValues();
-        return $values[$value] ?? "";
+        if (isset($values[$value])) {
+            return $values[$value];
+        }
+        return "";
     }
 }
