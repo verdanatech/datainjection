@@ -28,6 +28,7 @@
  * -------------------------------------------------------------------------
  */
 use Glpi\Exception\Http\HttpException;
+use Glpi\Features\AssignableItem;
 
 use function Safe\preg_match;
 use function Safe\preg_replace;
@@ -236,8 +237,9 @@ class PluginDatainjectionCommonInjectionLib
         }
 
         $status_check = true;
-        if (count($this->mandatory_fields[$itemtype]) > 0) {
-            foreach ($this->mandatory_fields[$itemtype] as $field => $value) {
+        $mandatory_fields = $this->mandatory_fields[$itemtype] ?? [];
+        if ($mandatory_fields !== []) {
+            foreach ($mandatory_fields as $field => $value) {
                 //Get value associated with the mandatory field
                 $value = $this->getValueByItemtypeAndName($itemtype, $field);
 
@@ -256,6 +258,12 @@ class PluginDatainjectionCommonInjectionLib
                     $this->results[self::ACTION_CHECK][] = [self::MANDATORY, $option['name']];
                 }
             }
+        } else {
+            $status_check = false;
+            $this->results[self::ACTION_CHECK][] = [
+                self::FAILED,
+                __('No mandatory field is defined for this model', 'datainjection'),
+            ];
         }
         return $status_check;
     }
@@ -956,8 +964,14 @@ class PluginDatainjectionCommonInjectionLib
             ];
             if (empty($value) && $value !== 0 && $value !== '0') {
                 if (isForeignKeyField($field) || (str_contains($field, 'is_')) || (method_exists($injectionClass, 'isNullable') && !$injectionClass->isNullable($field))) {
-                    // If the field is an id, we set it to 0
-                    $this->values[$itemtype][$field] = self::DROPDOWN_EMPTY_VALUE;
+                    //If the field concernes groupds, unseting it instead of setting it to 0 in order to avoid associating the item to a non existing group (id 0)
+                    $group_fields = ['groups_id_tech', 'groups_id', 'groups_id_normal'];
+                    if (in_array($field, $group_fields) && Toolbox::hasTrait($itemtype, AssignableItem::class)) {
+                        unset($this->values[$itemtype][$field]);
+                    } else {
+                        // If the field is an id, we set it to 0
+                        $this->values[$itemtype][$field] = self::DROPDOWN_EMPTY_VALUE;
+                    }
                 } else {
                     // Else we set it to NULL
                     $this->values[$itemtype][$field] = self::EMPTY_VALUE;
@@ -1681,16 +1695,26 @@ class PluginDatainjectionCommonInjectionLib
                 $toinject[$key] = $value;
             }
 
-            // handle new format for group type specification
-            // restricting to group_item relations only
-            if (($key === "groups_id_tech" || $key === "groups_id" || $key === "groups_id_normal") && $option['table'] == getTableForItemType(Group::class) && !empty($option) && isset($option['joinparams']['beforejoin']['table']) && $option['joinparams']['beforejoin']['table'] === getTableForItemType(Group_Item::class) && isset($option['joinparams']['beforejoin']['joinparams']['condition']['NEWTABLE.type'])) {
-                $group_type = $option['joinparams']['beforejoin']['joinparams']['condition']['NEWTABLE.type'];
-                // depending on the type, set the correct field (_groups_id_tech => array or _groups_id => array)
-                // and unset the old one (groups_id_tech => int or groups_id => int or groups_id_normal => int)
-                if ($group_type == Group_Item::GROUP_TYPE_TECH) {
-                    $toinject["_groups_id_tech"] = [$value];
+            // Normalize group assignment fields to GLPI relation payload keys.
+            // Some search options do not expose a stable joinparams shape, but GLPI
+            // still expects _groups_id/_groups_id_tech arrays when saving equipment groups.
+            if (
+                in_array($key, ['groups_id_tech', 'groups_id', 'groups_id_normal'], true)
+                && !empty($option)
+                && isset($option['table'])
+                && $option['table'] === getTableForItemType(Group::class)
+            ) {
+                $normalized_value = $toinject[$key];
+                $group_type = null;
+                if (isset($option['joinparams']['beforejoin']['joinparams']['condition']['NEWTABLE.type'])) {
+                    $group_type = $option['joinparams']['beforejoin']['joinparams']['condition']['NEWTABLE.type'];
+                }
+
+                // Keep explicit technical group semantics from key or metadata.
+                if ($key === 'groups_id_tech' || $group_type == Group_Item::GROUP_TYPE_TECH) {
+                    $toinject['_groups_id_tech'] = [$normalized_value];
                 } else {
-                    $toinject["_groups_id"] = [$value];
+                    $toinject['_groups_id'] = [$normalized_value];
                 }
                 unset($toinject[$key]);
             }

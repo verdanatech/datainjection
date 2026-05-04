@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.15.5] - 2026-04-30
+
+### Fixed
+
+- Fix crash when injection model has no mandatory fields defined
+- Fix models created on parent entities can't be used on child entites
+- Fix association of imported data with non-existing groups when the group column is empty in the import file
+- Fix responsible group injection payload normalization so group remains visible in GLPI after import
+- Fix incorrect escaping of apostrophes and accents
+- Fix plugin rights initialization and cleanup
+- Fix injection loading bar
+
+
 ## [2.15.4] - 2026-03-16
 
 ### Fixed
