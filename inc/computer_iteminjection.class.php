@@ -28,17 +28,13 @@
  * -------------------------------------------------------------------------
  */
 
-if (!defined('GLPI_ROOT')) {
-    die("Sorry. You can't access directly to this file");
-}
+use Glpi\Asset\Asset_PeripheralAsset;
 
-class PluginDatainjectionComputer_ItemInjection extends Computer_Item implements PluginDatainjectionInjectionInterface
+class PluginDatainjectionComputer_ItemInjection implements PluginDatainjectionInjectionInterface
 {
     public static function getTable($classname = null)
     {
-
-        $parenttype = get_parent_class();
-        return $parenttype::getTable();
+        return Asset_PeripheralAsset::getTable();
     }
 
 
@@ -62,6 +58,11 @@ class PluginDatainjectionComputer_ItemInjection extends Computer_Item implements
         global $CFG_GLPI;
 
         return $CFG_GLPI["directconnect_types"];
+    }
+
+    public function isNullable($field)
+    {
+        return true; // By default, all fields can be null
     }
 
 
@@ -115,14 +116,16 @@ class PluginDatainjectionComputer_ItemInjection extends Computer_Item implements
 
 
     /**
-    * @param $primary_type
-    * @param $values
+    * @param string $primary_type
+    * @param array $values
    **/
     public function addSpecificNeededFields($primary_type, $values)
     {
+        $fields['items_id_asset'] = $values['id'];
+        $fields['itemtype_asset'] = Computer::class;
 
-        $fields['items_id'] = $values[$primary_type]['id'];
-        $fields['itemtype'] = $primary_type;
+        $fields['items_id_peripheral'] = $values[$primary_type]['id'];
+        $fields['itemtype_peripheral'] = $primary_type;
         return $fields;
     }
 }

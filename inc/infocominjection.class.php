@@ -28,16 +28,14 @@
  * -------------------------------------------------------------------------
  */
 
-if (!defined('GLPI_ROOT')) {
-    die("Sorry. You can't access directly to this file");
-}
+
 
 class PluginDatainjectionInfocomInjection extends Infocom implements PluginDatainjectionInjectionInterface
 {
     public static function getTable($classname = null)
     {
 
-        $parenttype = get_parent_class(__CLASS__);
+        $parenttype = get_parent_class(self::class);
         return $parenttype::getTable();
     }
 
@@ -69,7 +67,7 @@ class PluginDatainjectionInfocomInjection extends Infocom implements PluginDatai
         $tab[4]['checktype']    = 'date';
         $tab[5]['checktype']    = 'date';
 
-       //Warranty_duration
+        //Warranty_duration
         $tab[6]['minvalue']     = 0;
         $tab[6]['maxvalue']     = 120;
         $tab[6]['step']         = 1;
@@ -101,7 +99,10 @@ class PluginDatainjectionInfocomInjection extends Infocom implements PluginDatai
         $tab[28]['checktype']   = 'date';
         $tab[159]['checktype']  = 'date';
 
-       //Remove some options because some fields cannot be imported
+        // field: sink_coeff
+        $tab[58]['checktype']   = 'decimal';
+
+        //Remove some options because some fields cannot be imported
         $blacklist     = PluginDatainjectionCommonInjectionLib::getBlacklistedOptions(get_parent_class($this));
         $notimportable = [20, 21, 86];
 
@@ -113,10 +114,10 @@ class PluginDatainjectionInfocomInjection extends Infocom implements PluginDatai
         $options['displaytype']   = ["date"           => [4, 5, 23, 24, 25, 27, 28, 159],
             "dropdown"         => [6, 9, 19, 123, 173],
             "dropdown_integer" => [6, 14],
-            "decimal"          => [8, 13, 17],
+            "decimal"          => [8, 13, 17, 58],
             "sink_type"        => [15],
             "alert"            => [22],
-            "multiline_text"   => [16]
+            "multiline_text"   => [16],
         ];
 
         return PluginDatainjectionCommonInjectionLib::addToSearchOptions($tab, $options, $this);
@@ -124,8 +125,8 @@ class PluginDatainjectionInfocomInjection extends Infocom implements PluginDatai
 
 
     /**
-    * @param $info      array
-    * @param $option    array
+    * @param array $info      array
+    * @param array $option    array
    **/
     public function showAdditionalInformation($info = [], $option = [])
     {
@@ -148,14 +149,14 @@ class PluginDatainjectionInfocomInjection extends Infocom implements PluginDatai
 
 
     /**
-    * @param $values    array
+    * @param array $values    array
    **/
     public function reformat(&$values = [])
     {
 
         foreach (
             ['order_date', 'use_date', 'buy_date', 'warranty_date', 'delivery_date',
-                'inventory_date'
+                'inventory_date',
             ] as $date
         ) {
             if (
@@ -167,13 +168,32 @@ class PluginDatainjectionInfocomInjection extends Infocom implements PluginDatai
         }
     }
 
+    public function isNullable($field)
+    {
+        return in_array($field, [
+            'buy_date',
+            'use_date',
+            'warranty_info',
+            'order_number',
+            'delivery_number',
+            'immo_number',
+            'comment',
+            'bill',
+            'order_date',
+            'delivery_date',
+            'inventory_date',
+            'warranty_date',
+            'date_mod',
+            'date_creation',
+            'decommission_date',
+        ]);
+    }
 
     /**
     * @see plugins/datainjection/inc/PluginDatainjectionInjectionInterface::addOrUpdateObject()
    **/
     public function addOrUpdateObject($values = [], $options = [])
     {
-
         $lib = new PluginDatainjectionCommonInjectionLib($this, $values, $options);
         $lib->processAddOrUpdate();
         return $lib->getInjectionResults();

@@ -38,13 +38,12 @@ class PluginDatainjectionMappingCollection
         $this->mappingCollection = [];
     }
 
-
     //---- Getter ----//
 
     /**
     * Load all the mappings for a specified model
     *
-    * @param model_ids the model ID
+    * @param int $models_id the model ID
    **/
     public function load($models_id)
     {
@@ -58,9 +57,7 @@ class PluginDatainjectionMappingCollection
 
         $this->mappingCollection = [];
 
-        foreach ($data = $DB->request($sql) as $data) {
-           // Addslashes to conform to value return by PluginDatainjectionBackendcsv::parseLine
-            $data["name"]              = addslashes($data["name"]);
+        foreach ($data = $DB->doQuery($sql) as $data) {
             $mapping                   = new PluginDatainjectionMapping();
             $mapping->fields           = $data;
             $this->mappingCollection[] = $mapping;
@@ -71,7 +68,7 @@ class PluginDatainjectionMappingCollection
     /**
     * Return all the mappings for this model
     *
-    * @return the list of all the mappings for this model
+    * @return array the list of all the mappings for this model
    **/
     public function getAllMappings()
     {
@@ -83,9 +80,9 @@ class PluginDatainjectionMappingCollection
     /**
     * Get a PluginDatainjectionMapping by giving the mapping name
     *
-    * @param name
+    * @param string $name
     *
-    * @return the PluginDatainjectionMapping object associated or null
+    * @return PluginDatainjectionMapping the PluginDatainjectionMapping object associated or null
    **/
     public function getMappingByName($name)
     {
@@ -97,9 +94,9 @@ class PluginDatainjectionMappingCollection
     /**
     * Get a PluginDatainjectionMapping by giving the mapping rank
     *
-    * @param rank
+    * @param int $rank
     *
-    * @return the PluginDatainjectionMapping object associated or null
+    * @return PluginDatainjectionMapping the PluginDatainjectionMapping object associated or null
    **/
     public function getMappingByRank($rank)
     {
@@ -111,10 +108,10 @@ class PluginDatainjectionMappingCollection
     /**
     * Find a mapping by looking for a specific field
     *
-    * @param field the field to look for
-    * @param the value of the field
+    * @param string $field the field to look for
+    * @param string|int $value the value of the field
     *
-    * @return the PluginDatainjectionMapping object associated or null
+    * @return PluginDatainjectionMapping|null the PluginDatainjectionMapping object associated or null
    **/
     public function getMappingsByField($field, $value)
     {
@@ -161,7 +158,7 @@ class PluginDatainjectionMappingCollection
     /**
     * Add a new mapping to this model (don't write in to DB)
     *
-    * @param mapping the new PluginDatainjectionMapping to add
+    * @param PluginDatainjectionMapping $mapping the new PluginDatainjectionMapping to add
    **/
     public function addNewMapping($mapping)
     {
@@ -173,7 +170,7 @@ class PluginDatainjectionMappingCollection
     /**
     * Replace all the mappings for a model
     *
-    * @param mappins the array of PluginDatainjectionMapping objects
+    * @param array $mappings the array of PluginDatainjectionMapping objects
    **/
     public function replaceMappings($mappings)
     {
@@ -185,9 +182,7 @@ class PluginDatainjectionMappingCollection
     /**
     * Check if at least one mapping is defined, and if one mandatory field
    */
-    public static function checkMappings($models_id)
-    {
-    }
+    public static function checkMappings($models_id) {}
 
 
     public function getMandatoryMappings()

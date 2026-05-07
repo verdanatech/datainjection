@@ -28,16 +28,14 @@
  * -------------------------------------------------------------------------
  */
 
-if (!defined('GLPI_ROOT')) {
-    die("Sorry. You can't access directly to this file");
-}
+
 
 class PluginDatainjectionContract_SupplierInjection extends Contract_Supplier implements PluginDatainjectionInjectionInterface
 {
     public static function getTable($classname = null)
     {
 
-        $parenttype = get_parent_class(__CLASS__);
+        $parenttype = get_parent_class(self::class);
         return $parenttype::getTable();
     }
 
@@ -53,6 +51,11 @@ class PluginDatainjectionContract_SupplierInjection extends Contract_Supplier im
     {
 
         return [];
+    }
+
+    public function isNullable($field)
+    {
+        return true; // By default, all fields can be null
     }
 
 
@@ -91,14 +94,14 @@ class PluginDatainjectionContract_SupplierInjection extends Contract_Supplier im
 
 
     /**
-    * @param $primary_type
-    * @param $values
+    * @param string $primary_type
+    * @param array $values
    **/
     public function addSpecificNeededFields($primary_type, $values)
     {
 
         return [getForeignKeyFieldForTable(getTableForItemType($primary_type))
-             => $values[$primary_type]['id']
+             => $values[$primary_type]['id'],
         ];
     }
 }

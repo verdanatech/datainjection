@@ -33,7 +33,7 @@ class PluginDatainjectionContract_ItemInjection extends Contract_Item implements
     public static function getTable($classname = null)
     {
 
-        $parenttype = get_parent_class(__CLASS__);
+        $parenttype = get_parent_class(self::class);
         return $parenttype::getTable();
     }
 
@@ -58,6 +58,11 @@ class PluginDatainjectionContract_ItemInjection extends Contract_Item implements
         global $CFG_GLPI;
 
         return $CFG_GLPI["contract_types"];
+    }
+
+    public function isNullable($field)
+    {
+        return true; // By default, all fields can be null
     }
 
 
@@ -104,8 +109,8 @@ class PluginDatainjectionContract_ItemInjection extends Contract_Item implements
 
 
     /**
-    * @param $primary_type
-    * @param $values
+    * @param string $primary_type
+    * @param array $values
    **/
     public function addSpecificNeededFields($primary_type, $values)
     {

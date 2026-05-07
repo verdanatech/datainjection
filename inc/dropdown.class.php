@@ -48,10 +48,7 @@ class PluginDatainjectionDropdown
     {
 
         $dates = self::dateFormats();
-        if (isset($dates[$date])) {
-            return $dates[$date];
-        }
-        return "";
+        return $dates[$date] ?? "";
     }
 
 
@@ -70,16 +67,13 @@ class PluginDatainjectionDropdown
 
 
     /**
-    * @param $format
+    * @param string $format
    **/
     public static function getFloatFormat($format)
     {
 
         $formats = self::floatFormats();
-        if (isset($formats[$format])) {
-            return $formats[$format];
-        }
-        return "";
+        return $formats[$format] ?? "";
     }
 
 
@@ -87,16 +81,16 @@ class PluginDatainjectionDropdown
     {
 
         $states[0]                                            = Dropdown::EMPTY_VALUE;
-       //$states[PluginDatainjectionModel::INITIAL_STEP] = __('Creation of the model on going', 'datainjection');
+        //$states[PluginDatainjectionModel::INITIAL_STEP] = __('Creation of the model on going', 'datainjection');
         $states[PluginDatainjectionModel::FILE_STEP]          = __('File to inject', 'datainjection');
         $states[PluginDatainjectionModel::MAPPING_STEP]       = __('Mappings', 'datainjection');
         $states[PluginDatainjectionModel::OTHERS_STEP]        = __(
             'Additional Information',
-            'datainjection'
+            'datainjection',
         );
         $states[PluginDatainjectionModel::READY_TO_USE_STEP]  = __(
             'Model available for use',
-            'datainjection'
+            'datainjection',
         );
         return $states;
     }
@@ -105,34 +99,37 @@ class PluginDatainjectionDropdown
     /**
     * Return current status of the model
     *
-    * @return nothing
+    * @return string
    **/
     public static function getStatusLabel($step)
     {
 
         $states = self::statusLabels();
-        if (isset($states[$step])) {
-            return $states[$step];
+        return $states[$step] ?? "";
+    }
+
+    public static function getStatusColor($step)
+    {
+        switch ($step) {
+            case PluginDatainjectionModel::MAPPING_STEP:
+            case PluginDatainjectionModel::OTHERS_STEP:
+                return "#ffb832";
+            case PluginDatainjectionModel::READY_TO_USE_STEP:
+                return "#2ec41f";
+            default:
+                return "#ff4e4e";
         }
-        return "";
     }
 
 
-    public static function dropdownFileEncoding()
+    public static function getFileEncodingValue()
     {
 
-        $values[PluginDatainjectionBackend::ENCODING_AUTO]      = __(
-            'Automatic detection',
-            'datainjection'
-        );
+        $values[PluginDatainjectionBackend::ENCODING_AUTO]      = __('Automatic detection', 'datainjection');
         $values[PluginDatainjectionBackend::ENCODING_UFT8]      = __('UTF-8', 'datainjection');
         $values[PluginDatainjectionBackend::ENCODING_ISO8859_1] = __('ISO8859-1', 'datainjection');
 
-        Dropdown::showFromArray(
-            'file_encoding',
-            $values,
-            ['value' => PluginDatainjectionBackend::ENCODING_AUTO]
-        );
+        return $values;
     }
 
 
@@ -157,15 +154,12 @@ class PluginDatainjectionDropdown
 
 
     /**
-    * @param $value
+    * @param array $value
    **/
     public static function getPortUnicityValues($value)
     {
 
         $values = self::portUnicityValues();
-        if (isset($values[$value])) {
-            return $values[$value];
-        }
-        return "";
+        return $values[$value] ?? "";
     }
 }

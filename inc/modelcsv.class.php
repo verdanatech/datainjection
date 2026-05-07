@@ -28,6 +28,36 @@
  * -------------------------------------------------------------------------
  */
 
+use Glpi\Application\View\TemplateRenderer;
+
+/**
+ * -------------------------------------------------------------------------
+ * DataInjection plugin for GLPI
+ * -------------------------------------------------------------------------
+ *
+ * LICENSE
+ *
+ * This file is part of DataInjection.
+ *
+ * DataInjection is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * DataInjection is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with DataInjection. If not, see <http://www.gnu.org/licenses/>.
+ * -------------------------------------------------------------------------
+ * @copyright Copyright (C) 2007-2023 by DataInjection plugin team.
+ * @license   GPLv2 https://www.gnu.org/licenses/gpl-2.0.html
+ * @link      https://github.com/pluginsGLPI/datainjection
+ * -------------------------------------------------------------------------
+ */
+
 class PluginDatainjectionModelcsv extends CommonDBChild
 {
     public static $rightname = "plugin_datainjection_model";
@@ -48,9 +78,7 @@ class PluginDatainjectionModelcsv extends CommonDBChild
         return true;
     }
 
-    public function init()
-    {
-    }
+    public function init() {}
 
 
     //---- Getters -----//
@@ -82,7 +110,7 @@ class PluginDatainjectionModelcsv extends CommonDBChild
     /**
     * Display Sample
     *
-    * @param $model     PluginDatainjectionModel object
+    * @param PluginDatainjectionModel $model     PluginDatainjectionModel object
    **/
     public function showSample(PluginDatainjectionModel $model)
     {
@@ -94,12 +122,12 @@ class PluginDatainjectionModelcsv extends CommonDBChild
             'Content-disposition: attachment; filename="' . str_replace(
                 ' ',
                 '_',
-                $model->getName()
-            ) . '.csv"'
+                $model->getName(),
+            ) . '.csv"',
         );
         header('Content-Type: text/comma-separated-values');
         header('Content-Transfer-Encoding: UTF-8');
-        header('Content-Length: ' . mb_strlen($sample, 'UTF-8'));
+        header('Content-Length: ' . strlen($sample));
         header('Pragma: no-cache');
         header('Cache-Control: no-store, no-cache, must-revalidate, post-check=0, pre-check=0');
         header('Expires: 0');
@@ -110,14 +138,14 @@ class PluginDatainjectionModelcsv extends CommonDBChild
     /**
     * Check if filename ends with .csv
     *
-    * @param $filename  the filename
+    * @param string $filename  the filename
     *
     * @return boolean true if name is correct, false is not
    **/
     public function checkFileName($filename)
     {
 
-        return ( !strstr(strtolower(substr($filename, strlen($filename) - 4)), '.csv'));
+        return (!strstr(strtolower(substr($filename, strlen($filename) - 4)), '.csv'));
     }
 
 
@@ -125,7 +153,7 @@ class PluginDatainjectionModelcsv extends CommonDBChild
     * Get CSV's specific ID for a model
     * If row doesn't exists, it creates it
     *
-    * @param $models_id the model ID
+    * @param int $models_id the model ID
     *
     * @return int the ID of the row in glpi_plugin_datainjection_modelcsv
    **/
@@ -138,8 +166,7 @@ class PluginDatainjectionModelcsv extends CommonDBChild
                 FROM `" . $this->getTable() . "`
                 WHERE `models_id` = '" . $models_id . "'";
 
-        /** @phpstan-ignore-next-line */
-        $results = $DB->query($query); // phpcs:ignore
+        $results = $DB->doQuery($query);
         $id = 0;
 
         if ($DB->numrows($results) > 0) {
@@ -158,31 +185,26 @@ class PluginDatainjectionModelcsv extends CommonDBChild
 
 
     /**
-    * @param $model              PluginDatainjectionModel object
-    * @param $options   array
+    * @param PluginDatainjectionModel $model              PluginDatainjectionModel object
+    * @param array $options   array
    **/
     public function showAdditionnalForm(PluginDatainjectionModel $model, $options = [])
     {
-
-        $id      = $this->getFromDBByModelID($model->fields['id']);
+        $id = $this->getFromDBByModelID($model->fields['id']);
         $canedit = $this->can($id, UPDATE);
 
-        echo "<tr><th colspan='4'>" . __('Specific file format options', 'datainjection') . "</th></tr>";
+        $data = [
+            'canedit' => $canedit,
+            'is_header_present' => $this->isHeaderPresent(),
+            'delimiter' => $this->getDelimiter(),
+        ];
 
-        echo "<tr class='tab_bg_1'>";
-        echo "<td>" . __("Header's presence", 'datainjection') . "</td>";
-        echo "<td>";
-        Dropdown::showYesNo('is_header_present', $this->isHeaderPresent());
-        echo "</td>";
-        echo "<td>" . __('File delimitor', 'datainjection') . "</td>";
-        echo "<td>";
-        echo "<input type='text' size='1' name='delimiter' value='" . $this->getDelimiter() . "'";
-        echo "</td></tr>";
+        TemplateRenderer::getInstance()->display('@datainjection/modelcsv_additional_form.html.twig', $data);
     }
 
 
     /**
-    * @param $fields
+    * @param array $fields
    **/
     public function saveFields($fields)
     {

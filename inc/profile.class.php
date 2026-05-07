@@ -38,13 +38,13 @@ class PluginDatainjectionProfile extends Profile
         $rights = [
             ['itemtype'  => 'PluginDatainjectionModel',
                 'label'     => __('Model management', 'datainjection'),
-                'field'     => 'plugin_datainjection_model'
+                'field'     => 'plugin_datainjection_model',
             ],
             ['itemtype'  => 'PluginDatainjectionModel',
                 'label'     => __('Injection of the file', 'datainjection'),
                 'field'     => 'plugin_datainjection_use',
-                'rights'    => [READ => __('Read')]
-            ]
+                'rights'    => [READ => __('Read')],
+            ],
         ];
         return $rights;
     }
@@ -52,7 +52,7 @@ class PluginDatainjectionProfile extends Profile
     /**
     * Clean profiles_id from plugin's profile table
     *
-    * @param $ID
+    * @param int $ID
    **/
     public function cleanProfiles($ID)
     {
@@ -61,16 +61,15 @@ class PluginDatainjectionProfile extends Profile
         $query = "DELETE FROM `glpi_profiles`
                 WHERE `profiles_id`='$ID'
                    AND `name` LIKE '%plugin_datainjection%'";
-        /** @phpstan-ignore-next-line */
-        $DB->query($query); // phpcs:ignore
+        $DB->doQuery($query);
     }
 
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
     {
 
-        if ($item->getType() == 'Profile') {
-            if ($item->getField('interface') == 'central') {
-                return __('Data injection', 'datainjection');
+        if ($item instanceof Profile) {
+            if ($item->fields['interface'] == 'central') {
+                return self::createTabEntry(__('Data injection', 'datainjection'), 0, $item::getType(), 'ti ti-download');
             }
             return '';
         }
@@ -81,13 +80,13 @@ class PluginDatainjectionProfile extends Profile
     public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
     {
 
-        if ($item->getType() == 'Profile') {
+        if ($item instanceof Profile) {
             $profile = new self();
-            $ID   = $item->getField('id');
-           //In case there's no right datainjection for this profile, create it
+            $ID   = $item->fields['id'];
+            //In case there's no right datainjection for this profile, create it
             self::addDefaultProfileInfos(
                 $item->getID(),
-                ['plugin_datainjection_model' => 0]
+                ['plugin_datainjection_model' => 0],
             );
             $profile->showForm($ID);
         }
@@ -95,7 +94,8 @@ class PluginDatainjectionProfile extends Profile
     }
 
     /**
-    * @param $profile
+    * @param int $profiles_id
+    * @param array $rights
    **/
     public static function addDefaultProfileInfos($profiles_id, $rights)
     {
@@ -105,7 +105,7 @@ class PluginDatainjectionProfile extends Profile
             if (
                 !countElementsInTable(
                     'glpi_profilerights',
-                    ['profiles_id' => $profiles_id, 'name' => $right]
+                    ['profiles_id' => $profiles_id, 'name' => $right],
                 )
             ) {
                 $myright['profiles_id'] = $profiles_id;
@@ -120,20 +120,19 @@ class PluginDatainjectionProfile extends Profile
     }
 
     /**
-    * @param $ID  integer
+    * @param int $profiles_id  integer
     */
     public static function createFirstAccess($profiles_id)
     {
 
         include_once Plugin::getPhpDir('datainjection') . "/inc/profile.class.php";
-        foreach (self::getAllRights() as $right) {
-            self::addDefaultProfileInfos(
-                $profiles_id,
-                ['plugin_datainjection_model' => ALLSTANDARDRIGHT,
-                    'plugin_datainjection_use' => READ
-                ]
-            );
-        }
+        self::addDefaultProfileInfos(
+            $profiles_id,
+            [
+                'plugin_datainjection_model' => ALLSTANDARDRIGHT,
+                'plugin_datainjection_use' => READ,
+            ],
+        );
     }
 
     public static function migrateProfiles()
@@ -147,8 +146,7 @@ class PluginDatainjectionProfile extends Profile
         $profiles = getAllDataFromTable('glpi_plugin_datainjection_profiles');
         foreach ($profiles as $id => $profile) {
             $query = "SELECT `id` FROM `glpi_profiles` WHERE `name`='" . $profile['name'] . "'";
-            /** @phpstan-ignore-next-line */
-            $result = $DB->query($query); // phpcs:ignore
+            $result = $DB->doQuery($query);
             if ($DB->numrows($result) == 1) {
                 $id = $DB->result($result, 0, 'id');
                 switch ($profile['model']) {
@@ -191,8 +189,8 @@ class PluginDatainjectionProfile extends Profile
             [
                 'canedit'       => $canedit,
                 'default_class' => 'tab_bg_2',
-                'title'         => __('General')
-            ]
+                'title'         => __('General'),
+            ],
         );
         if ($canedit) {
             echo "<div class='center'>";

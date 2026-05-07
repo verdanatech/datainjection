@@ -28,16 +28,14 @@
  * -------------------------------------------------------------------------
  */
 
-if (!defined('GLPI_ROOT')) {
-    die("Sorry. You can't access directly to this file");
-}
+
 
 class PluginDatainjectionNetworkEquipmentInjection extends NetworkEquipment implements PluginDatainjectionInjectionInterface
 {
     public static function getTable($classname = null)
     {
 
-        $parenttype = get_parent_class(__CLASS__);
+        $parenttype = get_parent_class(self::class);
         return $parenttype::getTable();
     }
 
@@ -55,19 +53,24 @@ class PluginDatainjectionNetworkEquipmentInjection extends NetworkEquipment impl
         return [];
     }
 
+    public function isNullable($field)
+    {
+        return true; // By default, all fields can be null
+    }
+
 
     /**
-    * @see plugins/datainjection/inc/PluginDatainjectionInjectionInterface::getOptions()
-   **/
+     * @see plugins/datainjection/inc/PluginDatainjectionInjectionInterface::getOptions()
+     **/
     public function getOptions($primary_type = '')
     {
 
         $tab                       = Search::getOptions(get_parent_class($this));
 
-       //Specific to location
+        //Specific to location
         $tab[3]['linkfield']       = 'locations_id';
 
-       //Virtual type : need to be processed at the end !
+        //Virtual type : need to be processed at the end !
         $tab[200]['table']         = 'glpi_networkequipments';
         $tab[200]['field']         = 'nb_ports';
         $tab[200]['name']          = __('Number of ports', 'datainjection');
@@ -76,20 +79,41 @@ class PluginDatainjectionNetworkEquipmentInjection extends NetworkEquipment impl
         $tab[200]['linkfield']     = 'nb_ports';
         $tab[200]['injectable']    = PluginDatainjectionCommonInjectionLib::FIELD_VIRTUAL;
 
-       //Remove some options because some fields cannot be imported
+        //Remove some options because some fields cannot be imported
         $blacklist     = PluginDatainjectionCommonInjectionLib::getBlacklistedOptions(get_parent_class($this));
         $notimportable = [
-            41, 43, 44, 45, 46, 48, 61, 63, 64, 91, 92, 93
+            41,
+            43,
+            44,
+            45,
+            46,
+            48,
+            61,
+            63,
+            64,
+            91,
+            92,
+            93,
         ];
 
         $options['ignore_fields'] = array_merge($blacklist, $notimportable);
 
-        $options['displaytype']   = ["dropdown"       => [3, 4, 11, 23, 31, 32, 33,
-            40, 49, 71
-        ],
+        $options['displaytype']   = [
+            "dropdown"       => [
+                3,
+                4,
+                11,
+                23,
+                31,
+                32,
+                33,
+                40,
+                49,
+                71,
+            ],
             "bool"           => [86],
             "user"           => [24, 70],
-            "multiline_text" => [16, 90]
+            "multiline_text" => [16, 90],
         ];
 
         return PluginDatainjectionCommonInjectionLib::addToSearchOptions($tab, $options, $this);
@@ -97,8 +121,8 @@ class PluginDatainjectionNetworkEquipmentInjection extends NetworkEquipment impl
 
 
     /**
-    * @see plugins/datainjection/inc/PluginDatainjectionInjectionInterface::addOrUpdateObject()
-   **/
+     * @see plugins/datainjection/inc/PluginDatainjectionInjectionInterface::addOrUpdateObject()
+     **/
     public function addOrUpdateObject($values = [], $options = [])
     {
 
@@ -109,10 +133,10 @@ class PluginDatainjectionNetworkEquipmentInjection extends NetworkEquipment impl
 
 
     /**
-    * @param $values
-    * @param $add                (true by default)
-    * @param $rights    array
-    */
+     * @param array $values
+     * @param boolean $add                (true by default)
+     * @param array|null $rights    array
+     */
     public function processAfterInsertOrUpdate($values, $add = true, $rights = [])
     {
 
@@ -132,6 +156,27 @@ class PluginDatainjectionNetworkEquipmentInjection extends NetworkEquipment impl
                 $input["itemtype"]       = 'NetworkEquipment';
                 $input["entities_id"]    = $values['NetworkEquipment']['entities_id'];
                 $netport->add($input);
+            }
+        }
+    }
+
+    /**
+     * @param array $values    array
+     **/
+    public function reformat(&$values = [])
+    {
+
+        foreach (
+            ['cpu'] as $int
+        ) {
+            if (
+                isset($values['NetworkEquipment'][$int])
+                && (
+                    $values['NetworkEquipment'][$int] == PluginDatainjectionCommonInjectionLib::EMPTY_VALUE
+                    || $values['NetworkEquipment'][$int] === 'NULL'
+                )
+            ) {
+                $values['NetworkEquipment'][$int] = 0;
             }
         }
     }

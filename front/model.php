@@ -28,14 +28,14 @@
  * -------------------------------------------------------------------------
  */
 
-require '../../../inc/includes.php';
+Session::checkLoginUser();
 
 Html::header(
     PluginDatainjectionModel::getTypeName(),
     '',
     "tools",
     "plugindatainjectionmenu",
-    "model"
+    "model",
 );
 
 $model = new PluginDatainjectionModel();

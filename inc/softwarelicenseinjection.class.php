@@ -28,9 +28,7 @@
  * -------------------------------------------------------------------------
  */
 
-if (!defined('GLPI_ROOT')) {
-    die("Sorry. You can't access directly to this file");
-}
+
 
 /// SoftwareLicense class
 class PluginDatainjectionSoftwareLicenseInjection extends SoftwareLicense implements PluginDatainjectionInjectionInterface
@@ -38,7 +36,7 @@ class PluginDatainjectionSoftwareLicenseInjection extends SoftwareLicense implem
     public static function getTable($classname = null)
     {
 
-        $parenttype = get_parent_class(__CLASS__);
+        $parenttype = get_parent_class(self::class);
         return $parenttype::getTable();
     }
 
@@ -54,6 +52,11 @@ class PluginDatainjectionSoftwareLicenseInjection extends SoftwareLicense implem
     {
 
         return ['Software'];
+    }
+
+    public function isNullable($field)
+    {
+        return true; // By default, all fields can be null
     }
 
 
@@ -77,7 +80,7 @@ class PluginDatainjectionSoftwareLicenseInjection extends SoftwareLicense implem
             $tab[100]['injectable']    = true;
         }
 
-       //Remove some options because some fields cannot be imported
+        //Remove some options because some fields cannot be imported
         $blacklist     = PluginDatainjectionCommonInjectionLib::getBlacklistedOptions(get_parent_class($this));
         $notimportable = [];
 
@@ -89,7 +92,7 @@ class PluginDatainjectionSoftwareLicenseInjection extends SoftwareLicense implem
         $options['displaytype']   = ["dropdown"       => [5, 6, 7, 110],
             "date"           => [8],
             "multiline_text" => [16],
-            "software" => [100]
+            "software" => [100],
         ];
 
         return PluginDatainjectionCommonInjectionLib::addToSearchOptions($tab, $options, $this);
@@ -97,8 +100,8 @@ class PluginDatainjectionSoftwareLicenseInjection extends SoftwareLicense implem
 
 
     /**
-    * @param $info      array
-    * @param $option    array
+    * @param array $info      array
+    * @param array $option    array
    **/
     public function showAdditionalInformation($info = [], $option = [])
     {
@@ -110,8 +113,8 @@ class PluginDatainjectionSoftwareLicenseInjection extends SoftwareLicense implem
                 Computer::dropdown(
                     ['name'        => $name,
                         'entity'      => $_SESSION['glpiactive_entity'],
-                        'entity_sons' => false
-                    ]
+                        'entity_sons' => false,
+                    ],
                 );
                 break;
 
@@ -119,8 +122,8 @@ class PluginDatainjectionSoftwareLicenseInjection extends SoftwareLicense implem
                 Software::dropdown(
                     ['name'        => $name,
                         'entity'      => $_SESSION['glpiactive_entity'],
-                        'entity_sons' => false
-                    ]
+                        'entity_sons' => false,
+                    ],
                 );
                 break;
 
@@ -143,7 +146,7 @@ class PluginDatainjectionSoftwareLicenseInjection extends SoftwareLicense implem
 
 
     /**
-    * @param $fields_toinject    array
+    * @param array $fields_toinject    array
    **/
     public function getValueForAdditionalMandatoryFields($fields_toinject = [])
     {
@@ -162,10 +165,9 @@ class PluginDatainjectionSoftwareLicenseInjection extends SoftwareLicense implem
                         "glpi_softwares",
                         "entities_id",
                         $fields_toinject['SoftwareLicense']['entities_id'],
-                        true
+                        true,
                     );
-        /** @phpstan-ignore-next-line */
-        $result = $DB->query($query); // phpcs:ignore
+        $result = $DB->doQuery($query);
 
         if ($DB->numrows($result) > 0) {
             $id = $DB->result($result, 0, 'id');
@@ -181,8 +183,8 @@ class PluginDatainjectionSoftwareLicenseInjection extends SoftwareLicense implem
 
 
     /**
-    * @param $primary_type
-    * @param $values
+    * @param string $primary_type
+    * @param array $values
    **/
     public function addSpecificNeededFields($primary_type, $values)
     {
@@ -196,8 +198,8 @@ class PluginDatainjectionSoftwareLicenseInjection extends SoftwareLicense implem
 
 
     /**
-    * @param $fields_toinject    array
-    * @param $options            array
+    * @param array $fields_toinject    array
+    * @param array $options            array
    **/
     public function checkPresent($fields_toinject = [], $options = [])
     {
