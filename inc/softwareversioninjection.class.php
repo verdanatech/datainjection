@@ -28,16 +28,14 @@
  * -------------------------------------------------------------------------
  */
 
-if (!defined('GLPI_ROOT')) {
-    die("Sorry. You can't access directly to this file");
-}
+
 
 class PluginDatainjectionSoftwareVersionInjection extends SoftwareVersion implements PluginDatainjectionInjectionInterface
 {
     public static function getTable($classname = null)
     {
 
-        $parenttype = get_parent_class(__CLASS__);
+        $parenttype = get_parent_class(self::class);
         return $parenttype::getTable();
     }
 
@@ -79,7 +77,7 @@ class PluginDatainjectionSoftwareVersionInjection extends SoftwareVersion implem
             $tab[100]['injectable']  = true;
         }
 
-       //Remove some options because some fields cannot be imported
+        //Remove some options because some fields cannot be imported
         $blacklist     = PluginDatainjectionCommonInjectionLib::getBlacklistedOptions(get_parent_class($this));
         $notimportable = [];
 
@@ -90,7 +88,7 @@ class PluginDatainjectionSoftwareVersionInjection extends SoftwareVersion implem
 
         $options['displaytype']   = ["dropdown"       => [4,31],
             "multiline_text" => [16],
-            "software" => [100]
+            "software" => [100],
         ];
 
         return PluginDatainjectionCommonInjectionLib::addToSearchOptions($tab, $options, $this);
@@ -110,8 +108,8 @@ class PluginDatainjectionSoftwareVersionInjection extends SoftwareVersion implem
                 Computer::dropdown(
                     ['name'        => $name,
                         'entity'      => $_SESSION['glpiactive_entity'],
-                        'entity_sons' => false
-                    ]
+                        'entity_sons' => false,
+                    ],
                 );
                 break;
 
@@ -119,8 +117,8 @@ class PluginDatainjectionSoftwareVersionInjection extends SoftwareVersion implem
                 Software::dropdown(
                     ['name'        => $name,
                         'entity'      => $_SESSION['glpiactive_entity'],
-                        'entity_sons' => false
-                    ]
+                        'entity_sons' => false,
+                    ],
                 );
                 break;
 
@@ -162,7 +160,7 @@ class PluginDatainjectionSoftwareVersionInjection extends SoftwareVersion implem
                         "glpi_softwares",
                         "entities_id",
                         $fields_toinject['SoftwareVersion']['entities_id'],
-                        true
+                        true,
                     );
         $result = $DB->doQuery($query);
 
@@ -197,14 +195,16 @@ class PluginDatainjectionSoftwareVersionInjection extends SoftwareVersion implem
     /**
     * @param array $fields_toinject    array
     * @param array $options            array
+    * @return array
    **/
-    public function checkPresent($fields_toinject = [], $options = [])
+    public function checkPresent($fields_toinject = [], $options = []): array
     {
-
         if ($options['itemtype'] != 'SoftwareVersion') {
-            return (" AND `softwares_id` = '" . $fields_toinject['Software']['id'] . "'
-                   AND `name` = '" . $fields_toinject['SoftwareVersion']['name'] . "'");
+            return [
+                'softwares_id' => $fields_toinject['Software']['id'],
+                'name'         => $fields_toinject['SoftwareVersion']['name'],
+            ];
         }
-        return "";
+        return [];
     }
 }

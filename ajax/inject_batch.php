@@ -1,3 +1,5 @@
+<?php
+
 /**
  * -------------------------------------------------------------------------
  * DataInjection plugin for GLPI
@@ -25,17 +27,16 @@
  * @link      https://github.com/pluginsGLPI/datainjection
  * -------------------------------------------------------------------------
  */
+use function Safe\json_encode;
 
-/**
- * @param num
- */
-function show_log(num) {
+header("Content-Type: application/json; charset=UTF-8");
+Html::header_nocache();
 
-   if (document.getElementById('log'+num+'_table').style.display == 'none') {
-      document.getElementById('log'+num).src = '../pics/minus.png';
-      document.getElementById('log'+num+'_table').style.display = 'block';
-   } else {
-      document.getElementById('log'+num).src = '../pics/plus.png';
-      document.getElementById('log'+num+'_table').style.display = 'none';
-   }
-}
+Session::checkCentralAccess();
+
+$offset     = (int) ($_POST['offset'] ?? 0);
+$batch_size = (int) ($_POST['batch_size'] ?? 10);
+
+echo json_encode(
+    PluginDatainjectionClientInjection::processBatch($offset, $batch_size),
+);

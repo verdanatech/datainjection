@@ -57,9 +57,7 @@ class PluginDatainjectionMappingCollection
 
         $this->mappingCollection = [];
 
-        foreach ($data = $DB->request($sql) as $data) {
-           // Addslashes to conform to value return by PluginDatainjectionBackendcsv::parseLine
-            $data["name"]              = addslashes($data["name"]);
+        foreach ($data = $DB->doQuery($sql) as $data) {
             $mapping                   = new PluginDatainjectionMapping();
             $mapping->fields           = $data;
             $this->mappingCollection[] = $mapping;
@@ -184,9 +182,7 @@ class PluginDatainjectionMappingCollection
     /**
     * Check if at least one mapping is defined, and if one mandatory field
    */
-    public static function checkMappings($models_id)
-    {
-    }
+    public static function checkMappings($models_id) {}
 
 
     public function getMandatoryMappings()
