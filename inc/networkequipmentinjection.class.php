@@ -28,16 +28,14 @@
  * -------------------------------------------------------------------------
  */
 
-if (!defined('GLPI_ROOT')) {
-    die("Sorry. You can't access directly to this file");
-}
+
 
 class PluginDatainjectionNetworkEquipmentInjection extends NetworkEquipment implements PluginDatainjectionInjectionInterface
 {
     public static function getTable($classname = null)
     {
 
-        $parenttype = get_parent_class(__CLASS__);
+        $parenttype = get_parent_class(self::class);
         return $parenttype::getTable();
     }
 
@@ -95,7 +93,7 @@ class PluginDatainjectionNetworkEquipmentInjection extends NetworkEquipment impl
             64,
             91,
             92,
-            93
+            93,
         ];
 
         $options['ignore_fields'] = array_merge($blacklist, $notimportable);
@@ -111,11 +109,11 @@ class PluginDatainjectionNetworkEquipmentInjection extends NetworkEquipment impl
                 33,
                 40,
                 49,
-                71
+                71,
             ],
             "bool"           => [86],
             "user"           => [24, 70],
-            "multiline_text" => [16, 90]
+            "multiline_text" => [16, 90],
         ];
 
         return PluginDatainjectionCommonInjectionLib::addToSearchOptions($tab, $options, $this);

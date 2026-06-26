@@ -28,12 +28,15 @@
  * -------------------------------------------------------------------------
  */
 
-define('PLUGIN_DATAINJECTION_VERSION', '2.14.3');
+use function Safe\define;
+use function Safe\mkdir;
+
+define('PLUGIN_DATAINJECTION_VERSION', '2.15.8');
 
 // Minimal GLPI version, inclusive
-define("PLUGIN_DATAINJECTION_MIN_GLPI", "10.0.11");
+define("PLUGIN_DATAINJECTION_MIN_GLPI", "11.0.5");
 // Maximum GLPI version, exclusive
-define("PLUGIN_DATAINJECTION_MAX_GLPI", "10.0.99");
+define("PLUGIN_DATAINJECTION_MAX_GLPI", "11.0.99");
 
 if (!defined("PLUGIN_DATAINJECTION_UPLOAD_DIR")) {
     define("PLUGIN_DATAINJECTION_UPLOAD_DIR", GLPI_PLUGIN_DOC_DIR . "/datainjection/");
@@ -53,21 +56,18 @@ function plugin_init_datainjection()
     if ($plugin->isActivated("datainjection")) {
         Plugin::registerClass(
             'PluginDatainjectionProfile',
-            ['addtabon' => ['Profile']
-            ]
+            ['addtabon' => ['Profile'],
+            ],
         );
 
-       //If directory doesn't exists, create it
+        //If directory doesn't exists, create it
         if (!plugin_datainjection_checkDirectories()) {
-            @ mkdir(PLUGIN_DATAINJECTION_UPLOAD_DIR)
-            or die(
-                sprintf(
-                    __('%1$s %2$s'),
-                    __("Can't create folder", 'datainjection'),
-                    PLUGIN_DATAINJECTION_UPLOAD_DIR
-                )
-            );
+            @ mkdir(PLUGIN_DATAINJECTION_UPLOAD_DIR);
         }
+        $PLUGIN_HOOKS["config_page"]['datainjection'] = "front/clientinjection.form.php";
+
+
+
         if (Session::haveRight('plugin_datainjection_use', READ)) {
             $PLUGIN_HOOKS["menu_toadd"]['datainjection'] = ['tools'  => 'PluginDatainjectionMenu'];
         }
@@ -75,12 +75,12 @@ function plugin_init_datainjection()
         $PLUGIN_HOOKS['pre_item_purge']['datainjection']
           = ['Profile' => ['PluginDatainjectionProfile', 'purgeProfiles']];
 
-         // Css file
-        if (strpos($_SERVER['REQUEST_URI'] ?? '', Plugin::getPhpDir('datainjection', false)) !== false) {
+        // Css file
+        if (str_contains($_SERVER['REQUEST_URI'] ?? '', Plugin::getPhpDir('datainjection', false))) {
             $PLUGIN_HOOKS['add_css']['datainjection'] = 'css/datainjection.css';
         }
 
-       // Javascript file
+        // Javascript file
         $PLUGIN_HOOKS['add_javascript']['datainjection'] = 'js/datainjection.js';
 
         $INJECTABLE_TYPES = [];
@@ -101,8 +101,8 @@ function plugin_version_datainjection()
             'glpi' => [
                 'min' => PLUGIN_DATAINJECTION_MIN_GLPI,
                 'max' => PLUGIN_DATAINJECTION_MAX_GLPI,
-            ]
-        ]
+            ],
+        ],
     ];
 }
 
@@ -119,7 +119,7 @@ function getTypesToInject(): void
     global $INJECTABLE_TYPES,$PLUGIN_HOOKS;
 
     if (count($INJECTABLE_TYPES)) {
-       // already populated
+        // already populated
         return;
     }
 
@@ -129,7 +129,7 @@ function getTypesToInject(): void
         'PluginDatainjectionDatabaseInjection'                    => 'datainjection',
         'PluginDatainjectionDatabaseInstanceInjection'            => 'datainjection',
         'PluginDatainjectionNotepadInjection'                     => 'datainjection',
-        'PluginDatainjectionComputer_ItemInjection'               => 'datainjection',
+        //'PluginDatainjectionComputer_ItemInjection'               => 'datainjection',
         'PluginDatainjectionConsumableItemInjection'              => 'datainjection',
         'PluginDatainjectionContactInjection'                     => 'datainjection',
         'PluginDatainjectionContact_SupplierInjection'            => 'datainjection',
@@ -141,6 +141,7 @@ function getTypesToInject(): void
         'PluginDatainjectionGroup_UserInjection'                  => 'datainjection',
         'PluginDatainjectionInfocomInjection'                     => 'datainjection',
         'PluginDatainjectionLocationInjection'                    => 'datainjection',
+        'PluginDatainjectionCategoryInjection'                    => 'datainjection',
         'PluginDatainjectionStateInjection'                       => 'datainjection',
         'PluginDatainjectionManufacturerInjection'                => 'datainjection',
         'PluginDatainjectionMonitorInjection'                     => 'datainjection',
@@ -151,8 +152,6 @@ function getTypesToInject(): void
         'PluginDatainjectionProfileInjection'                     => 'datainjection',
         'PluginDatainjectionProfile_UserInjection'                => 'datainjection',
         'PluginDatainjectionSoftwareInjection'                    => 'datainjection',
-        'PluginDatainjectionItem_SoftwareVersionInjection'        => 'datainjection',
-        'PluginDatainjectionItem_SoftwareLicenseInjection'        => 'datainjection',
         'PluginDatainjectionSoftwareLicenseInjection'             => 'datainjection',
         'PluginDatainjectionSoftwareVersionInjection'             => 'datainjection',
         'PluginDatainjectionSupplierInjection'                    => 'datainjection',
@@ -191,7 +190,7 @@ function getTypesToInject(): void
         'PluginDatainjectionPrinterModelInjection'                => 'datainjection',
         'PluginDatainjectionPeripheralModelInjection'             => 'datainjection',
         'PluginDatainjectionNetworkEquipmentModelInjection'       => 'datainjection',
-                        //'PluginDatainjectionNetworkEquipmentFirmwareInjection'    => 'datainjection',
+        //'PluginDatainjectionNetworkEquipmentFirmwareInjection'    => 'datainjection',
         'PluginDatainjectionVirtualMachineTypeInjection'          => 'datainjection',
         'PluginDatainjectionVirtualMachineSystemInjection'        => 'datainjection',
         'PluginDatainjectionVirtualMachineStateInjection'         => 'datainjection',
@@ -217,9 +216,9 @@ function getTypesToInject(): void
         'PluginDatainjectionDeviceDriveInjection'                 => 'datainjection',
         'PluginDatainjectionDeviceNetworkCardInjection'           => 'datainjection',
         'PluginDatainjectionApplianceInjection'                   => 'datainjection',
-        'PluginDatainjectionCertificateInjection'                 => 'datainjection'
+        'PluginDatainjectionCertificateInjection'                 => 'datainjection',
     ];
-   //Add plugins
+    //Add plugins
     Plugin::doHook('plugin_datainjection_populate');
 }
 
@@ -235,9 +234,12 @@ function plugin_datainjection_migratetypes_datainjection($types)
 
 function plugin_datainjection_checkDirectories()
 {
+    return !(!file_exists(PLUGIN_DATAINJECTION_UPLOAD_DIR) || !is_writable(PLUGIN_DATAINJECTION_UPLOAD_DIR));
+}
 
-    if (!file_exists(PLUGIN_DATAINJECTION_UPLOAD_DIR) || !is_writable(PLUGIN_DATAINJECTION_UPLOAD_DIR)) {
-        return false;
-    }
-    return true;
+function plugin_datainjection_geturl(): string
+{
+    /** @var array $CFG_GLPI */
+    global $CFG_GLPI;
+    return sprintf('%s/plugins/datainjection/', $CFG_GLPI['root_doc']);
 }
