@@ -27,6 +27,9 @@
  * @link      https://github.com/pluginsGLPI/datainjection
  * -------------------------------------------------------------------------
  */
+
+use Glpi\DBAL\QueryExpression;
+use Glpi\DBAL\QuerySubQuery;
 use Glpi\Exception\Http\HttpException;
 use Glpi\Features\AssignableItem;
 
@@ -777,15 +780,20 @@ class PluginDatainjectionCommonInjectionLib
         /** @var DBmysql $DB */
         global $DB;
 
-        $sql = "SELECT `id`
-              FROM `glpi_users`
-              WHERE LOWER(`name`) = '" . strtolower($value) . "'
-                 OR (CONCAT(LOWER(`realname`),' ',LOWER(`firstname`)) = '" . strtolower($value) . "'
-                    OR CONCAT(LOWER(`firstname`),' ',LOWER(`realname`)) = '" . strtolower($value) . "')";
-        $result = $DB->doQuery($sql);
-        if ($DB->numrows($result) > 0) {
-            //check if user has right on the current entity
-            $ID       = $DB->result($result, 0, "id");
+        $safe_lower = "'" . $DB->escape(strtolower($value)) . "'";
+        $result = $DB->request([
+            'SELECT' => ['id'],
+            'FROM'   => 'glpi_users',
+            'WHERE'  => [
+                'OR' => [
+                    new QueryExpression("LOWER(`name`) = $safe_lower"),
+                    new QueryExpression("CONCAT(LOWER(`realname`),' ',LOWER(`firstname`)) = $safe_lower"),
+                    new QueryExpression("CONCAT(LOWER(`firstname`),' ',LOWER(`realname`)) = $safe_lower"),
+                ],
+            ],
+        ]);
+        if (count($result) > 0) {
+            $ID       = $result->current()['id'];
             $entities = Profile_User::getUserEntities($ID, true);
 
             if (in_array($entity, $entities)) {
@@ -810,17 +818,22 @@ class PluginDatainjectionCommonInjectionLib
         /** @var DBmysql $DB */
         global $DB;
 
-        $sql = "SELECT `id`
-              FROM `glpi_contacts`
-              WHERE `entities_id` = '" . $entity . "'
-                 AND (LOWER(`name`) = '" . strtolower($value) . "'
-                    OR (CONCAT(LOWER(`name`),' ',LOWER(`firstname`)) = '" . strtolower($value) . "'
-                       OR CONCAT(LOWER(`firstname`),' ',LOWER(`name`)) = '" . strtolower($value) . "'))";
-        $result = $DB->doQuery($sql);
+        $safe_lower = "'" . $DB->escape(strtolower($value)) . "'";
+        $result = $DB->request([
+            'SELECT' => ['id'],
+            'FROM'   => 'glpi_contacts',
+            'WHERE'  => [
+                'entities_id' => $entity,
+                'OR'          => [
+                    new QueryExpression("LOWER(`name`) = $safe_lower"),
+                    new QueryExpression("CONCAT(LOWER(`name`),' ',LOWER(`firstname`)) = $safe_lower"),
+                    new QueryExpression("CONCAT(LOWER(`firstname`),' ',LOWER(`name`)) = $safe_lower"),
+                ],
+            ],
+        ]);
 
-        if ($DB->numrows($result) > 0) {
-            //check if user has right on the current entity
-            return $DB->result($result, 0, "id");
+        if (count($result) > 0) {
+            return $result->current()['id'];
         }
         return self::DROPDOWN_EMPTY_VALUE;
     }
@@ -841,17 +854,14 @@ class PluginDatainjectionCommonInjectionLib
         /** @var DBmysql $DB */
         global $DB;
 
-        $query = "SELECT `id`
-                FROM `" . $item->getTable() . "`
-                WHERE 1";
+        $where = [];
 
         if ($item->maybeTemplate()) {
-            $query .= " AND `is_template` = '0'";
+            $where['is_template'] = 0;
         }
 
         if ($item->isEntityAssign()) {
-            $query .= getEntitiesRestrictRequest(
-                " AND",
+            $where += getEntitiesRestrictCriteria(
                 $item->getTable(),
                 'entities_id',
                 $entity,
@@ -859,15 +869,18 @@ class PluginDatainjectionCommonInjectionLib
             );
         }
 
-        $query .= " AND `" . $searchOption['field'] . "` = '$value'";
-        $result = $DB->doQuery($query);
+        $where[$searchOption['field']] = $value;
 
-        if ($DB->numrows($result) > 0) {
-            //check if user has right on the current entity
-            return $DB->result($result, 0, "id");
-        } else {
-            return self::DROPDOWN_EMPTY_VALUE;
+        $result = $DB->request([
+            'SELECT' => ['id'],
+            'FROM'   => $item->getTable(),
+            'WHERE'  => $where,
+        ]);
+
+        if (count($result) > 0) {
+            return $result->current()['id'];
         }
+        return self::DROPDOWN_EMPTY_VALUE;
     }
 
     /**
@@ -999,14 +1012,17 @@ class PluginDatainjectionCommonInjectionLib
             throw new HttpException(500, 'Class ' . $itemtype . ' is not a valid class');
         }
         new $itemtype();
-        $query = "SELECT `id`
-                FROM `" . getTableForItemType($itemtype) . "`
-                WHERE `is_template` = '1'
-                      AND `template_name` = '$name'";
-        $result = $DB->doQuery($query);
+        $result = $DB->request([
+            'SELECT' => ['id'],
+            'FROM'   => getTableForItemType($itemtype),
+            'WHERE'  => [
+                'is_template'   => 1,
+                'template_name' => $name,
+            ],
+        ]);
 
-        if ($DB->numrows($result) > 0) {
-            return $DB->result($result, 0, 'id');
+        if (count($result) > 0) {
+            return $result->current()['id'];
         }
         return false;
     }
@@ -1089,6 +1105,12 @@ class PluginDatainjectionCommonInjectionLib
                         //(dd-mm-yyyy instead of yyyy-mm-dd)
                         $date = self::reformatDate($value, $this->getDateFormat());
                         $this->setValueForItemtype($itemtype, $field, $date);
+                        break;
+
+                    case "datetime":
+                        //Normalize to "Y-m-d H:i:s", stripping ISO8601 microseconds/timezone if present
+                        $datetime = self::reformatDateTime($value, $this->getDateFormat());
+                        $this->setValueForItemtype($itemtype, $field, $datetime);
                         break;
 
                     case "mac":
@@ -1209,6 +1231,44 @@ class PluginDatainjectionCommonInjectionLib
             return $new_date;
         }
         return $original_date;
+    }
+
+
+    /**
+    * Reformat a datetime value to the MySQL "Y-m-d H:i:s" format expected by the DB.
+    * Accepts ISO8601 values (with a "T" separator, microseconds and/or a timezone offset)
+    * as well as the same date formats supported by reformatDate().
+    *
+    * @param string $original_datetime the original datetime
+    * @param string $date_format the configured date format (dd-mm-yyyy, mm-dd-yyyy, yyyy-mm-dd)
+    *
+    * @return string the datetime reformated, if needed
+   **/
+    private static function reformatDateTime($original_datetime, $date_format)
+    {
+
+        if (empty($original_datetime)) {
+            return "NULL"; // required to avoid "0000-00-00 00:00:00" in the DB
+        }
+
+        $original_datetime = trim($original_datetime);
+        $separator          = (str_contains($original_datetime, 'T')) ? 'T' : ' ';
+        [$date_part, $time_part] = array_pad(explode($separator, $original_datetime, 2), 2, '00:00:00');
+
+        // Strip timezone offset (+00:00, -0500, Z) and microseconds from the time part
+        $time_part = preg_replace('/(Z|[+-]\d{2}:?\d{2})$/', '', $time_part);
+        $time_part = preg_replace('/\.\d+/', '', $time_part);
+        $time_part = trim($time_part);
+        if ($time_part === '') {
+            $time_part = '00:00:00';
+        }
+
+        $new_date = self::reformatDate($date_part, $date_format);
+        if ($new_date === "NULL") {
+            return "NULL";
+        }
+
+        return $new_date . ' ' . $time_part;
     }
 
 
@@ -1368,6 +1428,12 @@ class PluginDatainjectionCommonInjectionLib
                 case 'date':
                     // Date is already "reformat" according to getDateFormat()
                     $pat = '/^([0-9]{4})-([0-9]{1,2})-([0-9]{1,2})$/';
+                    $res = preg_match($pat, $data, $regs);
+                    return ($res !== 0 ? self::SUCCESS : self::TYPE_MISMATCH);
+
+                case 'datetime':
+                    // Datetime is already reformated to "Y-m-d H:i:s" by reformatThirdPass()
+                    $pat = '/^([0-9]{4})-([0-9]{1,2})-([0-9]{1,2}) ([0-9]{1,2}):([0-9]{1,2}):([0-9]{1,2})$/';
                     $res = preg_match($pat, $data, $regs);
                     return ($res !== 0 ? self::SUCCESS : self::TYPE_MISMATCH);
 
@@ -1698,11 +1764,14 @@ class PluginDatainjectionCommonInjectionLib
             // Normalize group assignment fields to GLPI relation payload keys.
             // Some search options do not expose a stable joinparams shape, but GLPI
             // still expects _groups_id/_groups_id_tech arrays when saving equipment groups.
+            // Only apply to items using the AssignableItem trait.
+            // Non-AssignableItem types store groups_id as a plain FK; skip array normalisation for them.
             if (
                 in_array($key, ['groups_id_tech', 'groups_id', 'groups_id_normal'], true)
                 && !empty($option)
                 && isset($option['table'])
                 && $option['table'] === getTableForItemType(Group::class)
+                && Toolbox::hasTrait($item->getType(), AssignableItem::class)
             ) {
                 $normalized_value = $toinject[$key];
                 $group_type = null;
@@ -1865,7 +1934,6 @@ class PluginDatainjectionCommonInjectionLib
         /** @var DBmysql $DB */
         global $DB;
 
-        $where    = "";
         $continue = true;
 
         $injectionClass->getOptions($this->primary_type);
@@ -1893,17 +1961,15 @@ class PluginDatainjectionCommonInjectionLib
             if (!$continue) {
                 $this->values[$itemtype]['id'] = self::ITEM_NOT_FOUND;
             } else {
-                $sql = "SELECT *
-                    FROM `" . $injectionClass->getTable() . "`";
-
                 if (!is_a($itemtype, CommonDBTM::class, true)) {
                     throw new HttpException(500, 'Class ' . $itemtype . ' is not a valid class');
                 }
-                $item = new $itemtype();
+                $item  = new $itemtype();
+                $where = [];
+
                 //If it's a computer device
                 if ($item instanceof CommonDevice) {
-                    $sql .= " WHERE `designation` = '" .
-                    $this->getValueByItemtypeAndName($itemtype, 'designation') . "'";
+                    $where['designation'] = $this->getValueByItemtypeAndName($itemtype, 'designation');
                 } elseif ($item instanceof CommonDBRelation) {
                     //Type is a relation : check it this relation still exists
                     //Define the side of the relation to use
@@ -1919,49 +1985,41 @@ class PluginDatainjectionCommonInjectionLib
                         $source_itemtype      = $item::$itemtype_1;
                         $destination_itemtype = $item::$itemtype_2;
                     }
-                    $where .= " AND `$source_id`='" .
-                    $this->getValueByItemtypeAndName($itemtype, $source_id) . "'";
+                    $where[$source_id]      = $this->getValueByItemtypeAndName($itemtype, $source_id);
+                    $where[$destination_id] = $this->getValueByItemtypeAndName($itemtype, $destination_id);
                     if ($item->isField('itemtype')) {
-                        $where .= " AND `$source_itemtype`='" .
-                        $this->getValueByItemtypeAndName($itemtype, $source_itemtype) . "'";
+                        $where[$source_itemtype] = $this->getValueByItemtypeAndName($itemtype, $source_itemtype);
                     }
-                    $where .= " AND `" . $destination_id . "`='" .
-                    $this->getValueByItemtypeAndName($itemtype, $destination_id) . "'";
-                    $sql   .= " WHERE 1 " . $where;
                 } else {
                     //Type is not a relation
 
                     //Type can be deleted
                     if ($injectionClass->maybeDeleted()) {
-                        $where .= " AND `is_deleted` = '0' ";
+                        $where['is_deleted'] = 0;
                     }
 
                     //Type can be a template
                     if ($injectionClass->maybeTemplate()) {
-                        $where .= " AND `is_template` = '0' ";
+                        $where['is_template'] = 0;
                     }
 
                     //Type can be assigned to an entity
                     if ($injectionClass->isEntityAssign()) {
                         //Type can be recursive
                         if ($injectionClass->maybeRecursive()) {
-                            $where_entity = getEntitiesRestrictRequest(
-                                " AND",
-                                $injectionClass->getTable(),
-                                "entities_id",
-                                $this->getValueByItemtypeAndName(
-                                    $itemtype,
+                            $where = array_merge(
+                                $where,
+                                getEntitiesRestrictCriteria(
+                                    $injectionClass->getTable(),
                                     'entities_id',
+                                    $this->getValueByItemtypeAndName($itemtype, 'entities_id'),
+                                    true,
                                 ),
-                                true,
                             );
                         } else {
                             //Type cannot be recursive
-                            $where_entity = " AND `entities_id` = '" .
-                            $this->getValueByItemtypeAndName($itemtype, 'entities_id') . "'";
+                            $where['entities_id'] = $this->getValueByItemtypeAndName($itemtype, 'entities_id');
                         }
-                    } else { //If no entity assignment for this itemtype
-                        $where_entity = "";
                     }
 
                     //Add mandatory fields to the query only if it's the primary_type to be injected
@@ -1969,44 +2027,59 @@ class PluginDatainjectionCommonInjectionLib
                         foreach ($this->mandatory_fields[$itemtype] as $field => $is_mandatory) {
                             if ($is_mandatory) {
                                 if ($item instanceof User && $field == "useremails_id") {
-                                    $email = $DB->escape($this->getValueByItemtypeAndName($itemtype, $field));
-                                    $where .= " AND `id` IN (SELECT `users_id` FROM glpi_useremails WHERE `email` = '$email') ";
+                                    $where['id'] = new QuerySubQuery([
+                                        'SELECT' => 'users_id',
+                                        'FROM'   => 'glpi_useremails',
+                                        'WHERE'  => ['email' => $this->getValueByItemtypeAndName($itemtype, $field)],
+                                    ]);
                                 } else {
-                                    $where .= " AND `" . $field . "`='" . (string) $this->getValueByItemtypeAndName($itemtype, $field) . "'";
+                                    $where[$field] = $this->getValueByItemtypeAndName($itemtype, $field);
                                 }
                             }
                         }
                     } else {
                         //Table contains an itemtype field
                         if ($injectionClass->isField('itemtype')) {
-                            $where .= " AND `itemtype` = '" . $this->getValueByItemtypeAndName(
-                                $itemtype,
-                                'itemtype',
-                            ) . "'";
+                            $where['itemtype'] = $this->getValueByItemtypeAndName($itemtype, 'itemtype');
                         }
 
                         //Table contains an items_id field
                         if ($injectionClass->isField('items_id')) {
-                            $where .= " AND `items_id` = '" . $this->getValueByItemtypeAndName(
-                                $itemtype,
-                                'items_id',
-                            ) . "'";
+                            $where['items_id'] = $this->getValueByItemtypeAndName($itemtype, 'items_id');
                         }
                     }
 
                     //Add additional parameters specific to this itemtype (or function checkPresent exists)
                     if (method_exists($injectionClass, 'checkPresent')) {
-                        $where .= $injectionClass->checkPresent($this->values, $options);
+                        $extra = $injectionClass->checkPresent($this->values, $options);
+                        if (is_array($extra)) {
+                            if (count($extra) > 0) {
+                                $where = array_merge($where, $extra);
+                            }
+                        } elseif (!empty($extra)) {
+                            trigger_error(
+                                sprintf(
+                                    '%s::checkPresent() must return an array, %s returned instead.',
+                                    get_class($injectionClass),
+                                    gettype($extra),
+                                ),
+                                E_USER_WARNING,
+                            );
+                        }
                     }
-                    $sql .= " WHERE 1 " . $where_entity . " " . $where;
                 }
-                $result = $DB->doQuery($sql);
-                if ($DB->numrows($result) > 0) {
-                    $db_fields = $DB->fetchAssoc($result);
+
+                $result = $DB->request([
+                    'FROM'  => $injectionClass->getTable(),
+                    'WHERE' => $where,
+                ]);
+
+                if (count($result) > 0) {
+                    $db_fields = $result->current();
                     foreach ($db_fields as $key => $value) {
                         $this->setValueForItemtype($itemtype, $key, $value, true);
                     }
-                    $this->setValueForItemtype($itemtype, 'id', $DB->result($result, 0, 'id'));
+                    $this->setValueForItemtype($itemtype, 'id', $db_fields['id']);
                 } else {
                     $this->setValueForItemtype($itemtype, 'id', self::ITEM_NOT_FOUND);
                 }
@@ -2207,6 +2280,12 @@ class PluginDatainjectionCommonInjectionLib
                     if ((isset($tmp['datatype']) && $tmp['datatype'] == 'dropdown') && !isset($tmp['displaytype'])) {
                         $type_searchOptions[$id]['displaytype'] = 'dropdown';
                         $tmp['displaytype'] = 'dropdown';
+                    }
+                    //Some injection.class files are missing checktype for datetime fields.
+                    //Without it, the value is never reformated/validated before being sent to the DB.
+                    if ((isset($tmp['datatype']) && $tmp['datatype'] == 'datetime') && !isset($tmp['checktype'])) {
+                        $type_searchOptions[$id]['checktype'] = 'datetime';
+                        $tmp['checktype'] = 'datetime';
                     }
                     if (isset($tmp['linkfield']) && !isset($tmp['displaytype'])) {
                         $type_searchOptions[$id]['displaytype'] = 'text';
