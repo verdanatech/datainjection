@@ -28,30 +28,8 @@
  * -------------------------------------------------------------------------
  */
 
-use function Safe\file_get_contents;
-use function Safe\file_put_contents;
-use function Safe\unlink;
-
 class PluginDatainjectionSession
 {
-    /**
-    * Unserialize a value, using Safe\unserialize() when available
-    * (not shipped by GLPI core yet, see thecodingmachine/safe >= 3.4.0)
-    *
-    * @param string $data  the serialized value
-    *
-    * @return mixed the unserialized value
-   **/
-    public static function unserialize(string $data)
-    {
-        if (function_exists('Safe\unserialize')) {
-            return \Safe\unserialize($data);
-        }
-        // @phpstan-ignore theCodingMachineSafe.function
-        return unserialize($data);
-    }
-
-
     /**
     * Get a parameter from the HTTP session
     *
@@ -65,7 +43,7 @@ class PluginDatainjectionSession
         if (!isset($_SESSION['datainjection'][$param])) {
             return false;
         }
-        if (in_array($param, ['results', 'error_lines', 'injection_lines', 'injection_results', 'injection_error_lines'])) {
+        if (in_array($param, ['results', 'error_lines'])) {
             $fic = $_SESSION['datainjection'][$param];
             return file_get_contents(GLPI_TMP_DIR . '/' . $fic);
         }
@@ -84,13 +62,7 @@ class PluginDatainjectionSession
     public static function setParam($param, $results): void
     {
 
-        if (in_array($param, ['results', 'error_lines', 'injection_lines', 'injection_results', 'injection_error_lines'])) {
-            if (isset($_SESSION['datainjection'][$param])) {
-                $old_fic = GLPI_TMP_DIR . '/' . $_SESSION['datainjection'][$param];
-                if (file_exists($old_fic)) {
-                    unlink($old_fic);
-                }
-            }
+        if (in_array($param, ['results', 'error_lines'])) {
             $fic = Session::getLoginUserID() . '_' . $param . '_' . microtime(true);
             file_put_contents(GLPI_TMP_DIR . '/' . $fic, $results);
             $_SESSION['datainjection'][$param] = $fic;
@@ -108,14 +80,11 @@ class PluginDatainjectionSession
     public static function removeParams(): void
     {
 
-        $file_params = ['results', 'error_lines', 'injection_lines', 'injection_results', 'injection_error_lines'];
-        foreach ($file_params as $param) {
-            if (isset($_SESSION['datainjection'][$param])) {
-                $fic = GLPI_TMP_DIR . '/' . $_SESSION['datainjection'][$param];
-                if (file_exists($fic)) {
-                    unlink($fic);
-                }
-            }
+        if (isset($_SESSION['datainjection']['results'])) {
+            unlink(GLPI_TMP_DIR . '/' . $_SESSION['datainjection']['results']);
+        }
+        if (isset($_SESSION['datainjection']['error_lines'])) {
+            unlink(GLPI_TMP_DIR . '/' . $_SESSION['datainjection']['error_lines']);
         }
         unset($_SESSION['datainjection']);
     }

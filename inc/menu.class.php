@@ -43,35 +43,35 @@ class PluginDatainjectionMenu extends CommonGLPI
         /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
-        $injectionFormUrl = 'plugins/datainjection/front/clientinjection.form.php';
+        $injectionFormUrl = "/" . Plugin::getWebDir('datainjection', false) . '/front/clientinjection.form.php';
 
         $menu = [
             'title' => self::getMenuName(),
             'page'  => $injectionFormUrl,
-            'icon'  => 'ti ti-download',
+            'icon'  => 'fas fa-file-import',
         ];
 
         if (Session::haveRight(static::$rightname, READ)) {
             $image_import  = "<i class='fas fa-upload' title='";
-            $image_import .= __('Injection of the file', 'datainjection');
-            $image_import .= "' alt='" . __('Injection of the file', 'datainjection') . "'></i>";
+            $image_import .= __s('Injection of the file', 'datainjection');
+            $image_import .= "' alt='" . __s('Injection of the file', 'datainjection') . "'></i>";
 
             $menu['options'] = [
                 'client' => [
-                    'title' => __('Injection of the file', 'datainjection'),
+                    'title' => __s('Injection of the file', 'datainjection'),
                     'page'  => $injectionFormUrl,
-                    'icon'  => 'ti ti-file-download',
+                    'icon'  => 'fas fa-upload',
                 ],
                 'model' => [
-                    'icon'  => PluginDatainjectionModel::getIcon(),
+                    'icon'  => 'fas fa-layer-group',
                     'links' => [
-                        $image_import => $injectionFormUrl,
-                    ],
-                ],
+                        $image_import => $injectionFormUrl
+                    ]
+                ]
             ];
 
             $model_name  = PluginDatainjectionModel::getTypeName(Session::getPluralNumber());
-            $image_model = "<i class='" . PluginDatainjectionModel::getIcon() . "' title='$model_name' alt='$model_name'></i>";
+            $image_model = "<i class='fas fa-layer-group' title='$model_name' alt='$model_name'></i>";
 
             if (Session::haveRight('plugin_datainjection_model', READ)) {
                 $menu['options']['model']['title'] = $model_name;

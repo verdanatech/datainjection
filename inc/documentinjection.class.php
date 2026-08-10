@@ -28,14 +28,16 @@
  * -------------------------------------------------------------------------
  */
 
-
+if (!defined('GLPI_ROOT')) {
+    die("Sorry. You can't access directly to this file");
+}
 
 class PluginDatainjectionDocumentInjection extends Document implements PluginDatainjectionInjectionInterface
 {
     public static function getTable($classname = null)
     {
 
-        $parenttype = get_parent_class(self::class);
+        $parenttype = get_parent_class(__CLASS__);
         return $parenttype::getTable();
     }
 

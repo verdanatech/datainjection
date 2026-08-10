@@ -28,7 +28,9 @@
  * -------------------------------------------------------------------------
  */
 
-
+if (!defined('GLPI_ROOT')) {
+    die("Sorry. You can't access directly to this file");
+}
 
 class PluginDatainjectionItem_SoftwareVersionInjection extends Item_SoftwareVersion implements PluginDatainjectionInjectionInterface
 {
@@ -40,7 +42,7 @@ class PluginDatainjectionItem_SoftwareVersionInjection extends Item_SoftwareVers
 
     public static function getTable($classname = null)
     {
-        $parenttype = get_parent_class(self::class);
+        $parenttype = get_parent_class(__CLASS__);
         return $parenttype::getTable();
     }
 
@@ -88,7 +90,7 @@ class PluginDatainjectionItem_SoftwareVersionInjection extends Item_SoftwareVers
         $tab[111]['name']         = sprintf(
             __('%1$s - %2$s'),
             self::getTypeName(),
-            __('Serial number'),
+            __('Serial number')
         );
         $tab[111]['injectable']   = true;
         $tab[111]['displaytype']  = 'dropdown';
@@ -101,7 +103,7 @@ class PluginDatainjectionItem_SoftwareVersionInjection extends Item_SoftwareVers
         $tab[112]['name']         = sprintf(
             __('%1$s - %2$s'),
             self::getTypeName(),
-            __('Inventory number'),
+            __('Inventory number')
         );
         $tab[112]['injectable']   = true;
         $tab[112]['displaytype']  = 'dropdown';
@@ -128,7 +130,7 @@ class PluginDatainjectionItem_SoftwareVersionInjection extends Item_SoftwareVers
     {
         return [
             'computers_id'        => 1,
-            'softwareversions_id' => 1,
+            'softwareversions_id' => 1
         ];
     }
 

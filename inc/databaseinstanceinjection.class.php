@@ -28,7 +28,9 @@
  * -------------------------------------------------------------------------
  */
 
-
+if (!defined('GLPI_ROOT')) {
+    die("Sorry. You can't access directly to this file");
+}
 
 
 class PluginDatainjectionDatabaseinstanceInjection extends DatabaseInstance implements PluginDatainjectionInjectionInterface
@@ -36,7 +38,7 @@ class PluginDatainjectionDatabaseinstanceInjection extends DatabaseInstance impl
     public static function getTable($classname = null)
     {
 
-        $parenttype = get_parent_class(self::class);
+        $parenttype = get_parent_class(__CLASS__);
         return $parenttype::getTable();
     }
 
@@ -71,7 +73,7 @@ class PluginDatainjectionDatabaseinstanceInjection extends DatabaseInstance impl
         $tab                 = Search::getOptions(get_parent_class($this));
         $tab[5]['linkfield']    = 'items_id'; // 5 = databaseinstance items_id Search option
 
-        //Remove some options because some fields cannot be imported
+       //Remove some options because some fields cannot be imported
         $blacklist = PluginDatainjectionCommonInjectionLib::getBlacklistedOptions(get_parent_class($this));
         $notimportable            = [];
         $options['ignore_fields'] = array_merge($blacklist, $notimportable);

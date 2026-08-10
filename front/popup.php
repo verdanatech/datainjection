@@ -28,6 +28,8 @@
  * -------------------------------------------------------------------------
  */
 
+require '../../../inc/includes.php';
+
 Session::checkLoginUser();
 
 switch ($_GET["popup"]) {

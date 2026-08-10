@@ -28,14 +28,16 @@
  * -------------------------------------------------------------------------
  */
 
-
+if (!defined('GLPI_ROOT')) {
+    die("Sorry. You can't access directly to this file");
+}
 
 class PluginDatainjectionAutoUpdateSystemInjection extends AutoUpdateSystem implements PluginDatainjectionInjectionInterface
 {
     public static function getTable($classname = null)
     {
 
-        $parenttype = get_parent_class(self::class);
+        $parenttype = get_parent_class(__CLASS__);
         return $parenttype::getTable();
     }
 
@@ -64,7 +66,7 @@ class PluginDatainjectionAutoUpdateSystemInjection extends AutoUpdateSystem impl
 
         $tab       = Search::getOptions(get_parent_class($this));
 
-        //Remove some options because some fields cannot be imported
+       //Remove some options because some fields cannot be imported
         $blacklist = PluginDatainjectionCommonInjectionLib::getBlacklistedOptions(get_parent_class($this));
         $notimportable            = [];
         $options['ignore_fields'] = array_merge($blacklist, $notimportable);

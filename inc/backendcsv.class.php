@@ -28,12 +28,6 @@
  * -------------------------------------------------------------------------
  */
 
-use function Safe\fclose;
-use function Safe\fgetcsv;
-use function Safe\fopen;
-use function Safe\fread;
-use function Safe\unlink;
-
 class PluginDatainjectionBackendcsv extends PluginDatainjectionBackend implements PluginDatainjectionBackendInterface
 {
     private $isHeaderPresent = true;
@@ -91,22 +85,38 @@ class PluginDatainjectionBackendcsv extends PluginDatainjectionBackend implement
    **/
     public static function parseLine($fic, $data, $encoding = 1)
     {
+        /** @var DBmysql $DB */
+        global $DB;
+
         $csv = [];
         $num = count($data);
 
         for ($c = 0; $c < $num; $c++) {
-            $tmp = trim($data[$c]);
-            switch ($encoding) {
-                case PluginDatainjectionBackend::ENCODING_ISO8859_1:
-                    $csv[0][] = $tmp === '' || $tmp === '0' ? Toolbox::encodeInUtf8($tmp) : $tmp;
-                    break;
+           //If field is not the last, or if field is the last of the line and is not empty
 
-                case PluginDatainjectionBackend::ENCODING_UFT8:
-                    $csv[0][] = $tmp;
-                    break;
+            if (
+                ($c < ($num - 1))
+                || (($c == ($num - 1))
+                && ($data[$num - 1] != PluginDatainjectionCommonInjectionLib::EMPTY_VALUE))
+            ) {
+                $tmp = trim($DB->escape($data[$c]));
+                switch ($encoding) {
+                  //If file is ISO8859-1 : encode the data in utf8
+                    case PluginDatainjectionBackend::ENCODING_ISO8859_1:
+                        if (!Toolbox::seems_utf8($tmp)) {
+                            $csv[0][] = Toolbox::encodeInUtf8($tmp);
+                        } else {
+                            $csv[0][] = $tmp;
+                        }
+                        break;
 
-                default:
-                    $csv[0][] = PluginDatainjectionBackend::toUTF8($tmp);
+                    case PluginDatainjectionBackend::ENCODING_UFT8:
+                         $csv[0][] = $tmp;
+                        break;
+
+                    default: //PluginDatainjectionBackend :: ENCODING_AUTO :
+                        $csv[0][] = PluginDatainjectionBackend::toUTF8($tmp);
+                }
             }
         }
         return $csv;
@@ -164,7 +174,7 @@ class PluginDatainjectionBackendcsv extends PluginDatainjectionBackend implement
 
         $index = 0;
         while (($data = fgetcsv($fic, 0, $this->getDelimiter())) !== false) {
-            //If line is not empty
+           //If line is not empty
             if (
                 (count($data) > 1)
                 || ($data[0] != PluginDatainjectionCommonInjectionLib::EMPTY_VALUE)
@@ -199,9 +209,9 @@ class PluginDatainjectionBackendcsv extends PluginDatainjectionBackend implement
 
         $this->file_handler = fopen($this->file, 'r');
 
-        // Check if file starts with BOM.
-        // 1. If BOM found, keep the handler moved to 4th char to not include it in data.
-        // 2. If no BOM found, rewind to start of file.
+       // Check if file starts with BOM.
+       // 1. If BOM found, keep the handler moved to 4th char to not include it in data.
+       // 2. If no BOM found, rewind to start of file.
         $hasBOM = fread($this->file_handler, 3) === pack('CCC', 0xEF, 0xBB, 0xBF);
         if (!$hasBOM) {
             fseek($this->file_handler, 0);
