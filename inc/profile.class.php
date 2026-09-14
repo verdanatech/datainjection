@@ -35,18 +35,17 @@ class PluginDatainjectionProfile extends Profile
     public static function getAllRights()
     {
 
-        $rights = [
+        return [
             ['itemtype'  => 'PluginDatainjectionModel',
                 'label'     => __('Model management', 'datainjection'),
-                'field'     => 'plugin_datainjection_model'
+                'field'     => 'plugin_datainjection_model',
             ],
             ['itemtype'  => 'PluginDatainjectionModel',
                 'label'     => __('Injection of the file', 'datainjection'),
                 'field'     => 'plugin_datainjection_use',
-                'rights'    => [READ => __('Read')]
-            ]
+                'rights'    => [READ => __('Read')],
+            ],
         ];
-        return $rights;
     }
 
     /**
@@ -59,7 +58,7 @@ class PluginDatainjectionProfile extends Profile
         /** @var DBmysql $DB */
         global $DB;
         $query = "DELETE FROM `glpi_profiles`
-                WHERE `profiles_id`='$ID'
+                WHERE `profiles_id`='{$ID}'
                    AND `name` LIKE '%plugin_datainjection%'";
         $DB->doQuery($query);
     }
@@ -69,10 +68,12 @@ class PluginDatainjectionProfile extends Profile
 
         if ($item instanceof Profile) {
             if ($item->fields['interface'] == 'central') {
-                return __('Data injection', 'datainjection');
+                return self::createTabEntry(__('Data injection', 'datainjection'), 0, $item::getType(), 'ti ti-download');
             }
+
             return '';
         }
+
         return '';
     }
 
@@ -83,13 +84,14 @@ class PluginDatainjectionProfile extends Profile
         if ($item instanceof Profile) {
             $profile = new self();
             $ID   = $item->fields['id'];
-           //In case there's no right datainjection for this profile, create it
+            //In case there's no right datainjection for this profile, create it
             self::addDefaultProfileInfos(
                 $item->getID(),
-                ['plugin_datainjection_model' => 0]
+                ['plugin_datainjection_model' => 0],
             );
             $profile->showForm($ID);
         }
+
         return true;
     }
 
@@ -105,7 +107,7 @@ class PluginDatainjectionProfile extends Profile
             if (
                 !countElementsInTable(
                     'glpi_profilerights',
-                    ['profiles_id' => $profiles_id, 'name' => $right]
+                    ['profiles_id' => $profiles_id, 'name' => $right],
                 )
             ) {
                 $myright['profiles_id'] = $profiles_id;
@@ -126,14 +128,13 @@ class PluginDatainjectionProfile extends Profile
     {
 
         include_once Plugin::getPhpDir('datainjection') . "/inc/profile.class.php";
-        foreach (self::getAllRights() as $right) {
-            self::addDefaultProfileInfos(
-                $profiles_id,
-                ['plugin_datainjection_model' => ALLSTANDARDRIGHT,
-                    'plugin_datainjection_use' => READ
-                ]
-            );
-        }
+        self::addDefaultProfileInfos(
+            $profiles_id,
+            [
+                'plugin_datainjection_model' => ALLSTANDARDRIGHT,
+                'plugin_datainjection_use' => READ,
+            ],
+        );
     }
 
     public static function migrateProfiles()
@@ -162,6 +163,7 @@ class PluginDatainjectionProfile extends Profile
                         $value = 0;
                         break;
                 }
+
                 self::addDefaultProfileInfos($id, ['plugin_datainjection_model' => $value]);
                 if ($value > 0) {
                     self::addDefaultProfileInfos($id, ['plugin_datainjection_use' => READ]);
@@ -170,6 +172,8 @@ class PluginDatainjectionProfile extends Profile
                 }
             }
         }
+
+        return null;
     }
 
     public function showForm($ID, $options = [])
@@ -190,8 +194,8 @@ class PluginDatainjectionProfile extends Profile
             [
                 'canedit'       => $canedit,
                 'default_class' => 'tab_bg_2',
-                'title'         => __('General')
-            ]
+                'title'         => __('General'),
+            ],
         );
         if ($canedit) {
             echo "<div class='center'>";
@@ -200,6 +204,7 @@ class PluginDatainjectionProfile extends Profile
             echo "</div>\n";
             Html::closeForm();
         }
+
         echo "</div>";
 
         return true;

@@ -30,13 +30,7 @@
 
 class PluginDatainjectionMappingCollection
 {
-    private $mappingCollection;
-
-    public function __construct()
-    {
-
-        $this->mappingCollection = [];
-    }
+    private $mappingCollection = [];
 
     //---- Getter ----//
 
@@ -52,14 +46,12 @@ class PluginDatainjectionMappingCollection
 
         $sql = "SELECT *
               FROM `glpi_plugin_datainjection_mappings`
-              WHERE `models_id` = '$models_id'
+              WHERE `models_id` = '{$models_id}'
               ORDER BY `rank` ASC";
 
         $this->mappingCollection = [];
 
-        foreach ($data = $DB->request($sql) as $data) {
-           // Addslashes to conform to value return by PluginDatainjectionBackendcsv::parseLine
-            $data["name"]              = addslashes($data["name"]);
+        foreach ($data = $DB->doQuery($sql) as $data) {
             $mapping                   = new PluginDatainjectionMapping();
             $mapping->fields           = $data;
             $this->mappingCollection[] = $mapping;
@@ -123,6 +115,7 @@ class PluginDatainjectionMappingCollection
                 return $mapping;
             }
         }
+
         return null;
     }
 
@@ -184,9 +177,7 @@ class PluginDatainjectionMappingCollection
     /**
     * Check if at least one mapping is defined, and if one mandatory field
    */
-    public static function checkMappings($models_id)
-    {
-    }
+    public static function checkMappings($models_id) {}
 
 
     public function getMandatoryMappings()
@@ -198,6 +189,7 @@ class PluginDatainjectionMappingCollection
                 $mandatories[] = $mapping;
             }
         }
+
         return $mandatories;
     }
 

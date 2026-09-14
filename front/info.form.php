@@ -28,13 +28,14 @@
  * -------------------------------------------------------------------------
  */
 
-require '../../../inc/includes.php';
 Session::checkLoginUser();
 
 /* Update mappings */
 if (isset($_POST["update"])) {
+    $model = new PluginDatainjectionModel();
+    $model->check($_POST['models_id'], UPDATE);
     PluginDatainjectionInfo::manageInfos($_POST['models_id'], $_POST);
-} else if (isset($_POST["delete"])) {
+} elseif (isset($_POST["delete"])) {
     $info = new PluginDatainjectionInfo();
     foreach ($_POST["item"] as $key => $val) {
         $input = ['id' => $key];
@@ -43,7 +44,9 @@ if (isset($_POST["update"])) {
             $info->delete($input);
         }
     }
+
     Html::back();
 }
+
 Session::setActiveTab('PluginDatainjectionModel', 'PluginDatainjectionModel$5');
 Html::back();

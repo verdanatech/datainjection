@@ -29,12 +29,11 @@
  */
 
 // Direct access to file
-if (strpos($_SERVER['PHP_SELF'], "injection.php")) {
-    include '../../../inc/includes.php';
+if (strpos((string) $_SERVER['PHP_SELF'], "injection.php")) {
     header("Content-Type: text/html; charset=UTF-8");
     Html::header_nocache();
 }
 
-Session::checkCentralAccess();
-$model = unserialize($_SESSION['datainjection']['currentmodel']);
+Session::checkRight(PluginDatainjectionClientInjection::$rightname, READ);
+$model = PluginDatainjectionSession::unserialize($_SESSION['datainjection']['currentmodel']);
 PluginDatainjectionClientInjection::showInjectionForm($model, $_SESSION['glpiactive_entity']);

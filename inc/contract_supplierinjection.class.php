@@ -28,16 +28,14 @@
  * -------------------------------------------------------------------------
  */
 
-if (!defined('GLPI_ROOT')) {
-    die("Sorry. You can't access directly to this file");
-}
+
 
 class PluginDatainjectionContract_SupplierInjection extends Contract_Supplier implements PluginDatainjectionInjectionInterface
 {
     public static function getTable($classname = null)
     {
 
-        $parenttype = get_parent_class(__CLASS__);
+        $parenttype = get_parent_class(self::class);
         return $parenttype::getTable();
     }
 
@@ -66,20 +64,7 @@ class PluginDatainjectionContract_SupplierInjection extends Contract_Supplier im
    **/
     public function getOptions($primary_type = '')
     {
-
-        $tab[4]['table']        = 'glpi_contracts';
-        $tab[4]['field']        = 'name';
-        $tab[4]['name']         = __('Contract');
-        $tab[4]['checktype']    = 'text';
-        $tab[4]['displaytype']  = 'dropdown';
-
-        $tab[5]['table']        = 'glpi_suppliers';
-        $tab[5]['field']        = 'name';
-        $tab[5]['name']         = __('Supplier');
-        $tab[5]['checktype']    = 'text';
-        $tab[5]['displaytype']  = 'dropdown';
-
-        return $tab;
+        return [4 => ['table' => 'glpi_contracts', 'field' => 'name', 'name' => __('Contract'), 'checktype' => 'text', 'displaytype' => 'dropdown'], 5 => ['table' => 'glpi_suppliers', 'field' => 'name', 'name' => __('Supplier'), 'checktype' => 'text', 'displaytype' => 'dropdown']];
     }
 
 
@@ -103,7 +88,7 @@ class PluginDatainjectionContract_SupplierInjection extends Contract_Supplier im
     {
 
         return [getForeignKeyFieldForTable(getTableForItemType($primary_type))
-             => $values[$primary_type]['id']
+             => $values[$primary_type]['id'],
         ];
     }
 }

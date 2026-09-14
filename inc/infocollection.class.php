@@ -30,14 +30,7 @@
 
 class PluginDatainjectionInfoCollection
 {
-    public $infosCollection;
-
-
-    public function __construct()
-    {
-
-        $this->infosCollection = [];
-    }
+    public $infosCollection = [];
 
 
     //---- Getter ----//
@@ -57,7 +50,7 @@ class PluginDatainjectionInfoCollection
                 WHERE `models_id` = '" . $models_id . "'
                 ORDER BY `itemtype` ASC";
 
-        foreach ($DB->request($query) as $data) {
+        foreach ($DB->doQuery($query) as $data) {
             $infos = new PluginDatainjectionInfo();
             $infos->fields = $data;
             $this->infosCollection[] = $infos;

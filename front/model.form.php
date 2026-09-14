@@ -28,7 +28,6 @@
  * -------------------------------------------------------------------------
  */
 
-require '../../../inc/includes.php';
 Session::checkLoginUser();
 
 if (!isset($_GET["id"])) {
@@ -49,13 +48,13 @@ if (isset($_POST["add"])) {
 
     //Set display to the advanced options tab
     Session::setActiveTab('PluginDatainjectionModel', 'PluginDatainjectionModel$3');
-    Html::redirect(Toolbox::getItemTypeFormURL('PluginDatainjectionModel') . "?id=$newID");
-} else if (isset($_POST["delete"])) {
+    Html::redirect(Toolbox::getItemTypeFormURL('PluginDatainjectionModel') . ('?id=' . $newID));
+} elseif (isset($_POST["delete"])) {
     /* delete */
     $model->check($_POST['id'], DELETE);
     $model->delete($_POST);
     $model->redirectToList();
-} else if (isset($_POST["update"])) {
+} elseif (isset($_POST["update"])) {
     /* update */
     //Update model
     $model->check($_POST['id'], UPDATE);
@@ -69,40 +68,41 @@ if (isset($_POST["add"])) {
     $model->delete($_POST, true);
 
     $model->redirectToList();
-} else if (isset($_POST["validate"])) {
+} elseif (isset($_POST["validate"])) {
     /* update order */
     $model->check($_POST['id'], UPDATE);
     $model->switchReadyToUse();
     Html::back();
-} else if (isset($_POST['upload'])) {
-    if (!empty($_FILES)) {
+} elseif (isset($_POST['upload'])) {
+    if ($_FILES !== []) {
         $model->check($_POST['id'], UPDATE);
 
         if (
             $model->processUploadedFile(
                 [
                     'file_encoding' => 'csv',
-                    'mode'          => PluginDatainjectionModel::CREATION
-                ]
+                    'mode'          => PluginDatainjectionModel::CREATION,
+                ],
             )
         ) {
             Session::setActiveTab('PluginDatainjectionModel', 'PluginDatainjectionModel$4');
         } else {
             Session::addMessageAfterRedirect(
-                __('The file could not be found (Maybe it exceeds the maximum size allowed)', 'datainjection'),
+                __s('The file could not be found (Maybe it exceeds the maximum size allowed)', 'datainjection'),
                 true,
                 ERROR,
-                true
+                true,
             );
         }
     }
+
     Html::back();
-} else if (isset($_GET['sample'])) {
+} elseif (isset($_GET['sample'])) {
     $model->check($_GET['sample'], READ);
     $modeltype = PluginDatainjectionModel::getInstance($model->getField('filetype'));
     $modeltype->getFromDBByModelID($model->getField('id'));
     $modeltype->showSample($model);
-    exit(0);
+    return;
 }
 
 Html::header(
@@ -110,7 +110,7 @@ Html::header(
     '',
     "tools",
     "plugindatainjectionmenu",
-    "model"
+    "model",
 );
 
 $model->display(['id' => $_GET["id"]]);
